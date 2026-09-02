@@ -1,0 +1,9 @@
+{
+  "name": "Plano Alimentar",
+  "short_name": "Plano",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#EEF0E6",
+  "theme_color": "#4B6350",
+  "icons": []
+}
