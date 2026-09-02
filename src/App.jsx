@@ -13,14 +13,22 @@ export default function App() {
       setSession(session);
     });
 
+    // Pode já ter sido apanhado antes da app arrancar (ver index.html).
+    if (window.__installPromptEvent) setInstallPrompt(window.__installPromptEvent);
+
+    const onReady = () => setInstallPrompt(window.__installPromptEvent);
+    window.addEventListener("installpromptready", onReady);
+
     const onBeforeInstall = (e) => {
       e.preventDefault();
+      window.__installPromptEvent = e;
       setInstallPrompt(e);
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
 
     return () => {
       listener.subscription.unsubscribe();
+      window.removeEventListener("installpromptready", onReady);
       window.removeEventListener("beforeinstallprompt", onBeforeInstall);
     };
   }, []);
@@ -29,6 +37,7 @@ export default function App() {
     if (!installPrompt) return;
     installPrompt.prompt();
     await installPrompt.userChoice;
+    window.__installPromptEvent = null;
     setInstallPrompt(null);
   };
 
@@ -42,5 +51,5 @@ export default function App() {
 
   return session
     ? <PlanApp session={session} installPrompt={installPrompt} onInstall={handleInstall} />
-    : <AuthScreens />;
+    : <AuthScreens installPrompt={installPrompt} onInstall={handleInstall} />;
 }
