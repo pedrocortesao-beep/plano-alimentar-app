@@ -1,31 +1,45 @@
 import { useState } from "react";
-import { MoreVertical, Lock, Unlock, Droplet, MessageSquarePlus, X } from "lucide-react";
+import { MoreVertical, Lock, Unlock, Droplet, MessageSquarePlus, X, Info, Share2 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
 
-export default function MoreMenu({ userId, plan, onToggleLock, waterSettings, onWaterSettingsChange }) {
+export default function MoreMenu({ userId, plan, onToggleLock, waterSettings, onWaterSettingsChange, onNavigate }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | "water" | "feedback"
 
+  const go = (tabId) => { onNavigate(tabId); setOpen(false); };
+
   return (
-    <div style={{ position: "relative" }}>
-      <button style={styles.iconBtn} onClick={() => { setOpen(o => !o); setPanel(null); }} title="Mais opções">
+    <>
+      <button style={styles.iconBtn} onClick={() => { setOpen(true); setPanel(null); }} title="Mais opções">
         <MoreVertical size={18} />
       </button>
 
-      {open && (
-        <div style={menuStyles.dropdown}>
-          <button style={menuStyles.item} onClick={() => { onToggleLock(); setOpen(false); }}>
-            {plan.locked ? <Unlock size={14} /> : <Lock size={14} />}
-            {plan.locked ? "Desbloquear plano" : "Bloquear plano"}
-          </button>
-          <button style={menuStyles.item} onClick={() => setPanel("water")}>
-            <Droplet size={14} /> Lembrete de água
-          </button>
-          <button style={menuStyles.item} onClick={() => setPanel("feedback")}>
-            <MessageSquarePlus size={14} /> Sugerir melhorias
-          </button>
+      {open && !panel && (
+        <div style={menuStyles.overlay} onClick={() => setOpen(false)}>
+          <div style={menuStyles.panel} onClick={e => e.stopPropagation()}>
+            <div style={menuStyles.panelHead}>
+              <span style={styles.planObsTitle}>Mais opções</span>
+              <button style={styles.iconBtn} onClick={() => setOpen(false)}><X size={16} /></button>
+            </div>
+            <button style={menuStyles.item} onClick={() => go("partilhar")}>
+              <Share2 size={15} /> Partilhar
+            </button>
+            <button style={menuStyles.item} onClick={() => { onToggleLock(); setOpen(false); }}>
+              {plan.locked ? <Unlock size={15} /> : <Lock size={15} />}
+              {plan.locked ? "Desbloquear plano" : "Bloquear plano"}
+            </button>
+            <button style={menuStyles.item} onClick={() => setPanel("water")}>
+              <Droplet size={15} /> Lembrete de água
+            </button>
+            <button style={menuStyles.item} onClick={() => setPanel("feedback")}>
+              <MessageSquarePlus size={15} /> Sugerir melhorias
+            </button>
+            <button style={menuStyles.item} onClick={() => go("sobre")}>
+              <Info size={15} /> Sobre a app
+            </button>
+          </div>
         </div>
       )}
 
@@ -40,7 +54,7 @@ export default function MoreMenu({ userId, plan, onToggleLock, waterSettings, on
       {panel === "feedback" && (
         <FeedbackPanel userId={userId} onClose={() => { setPanel(null); setOpen(false); }} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -129,9 +143,8 @@ function FeedbackPanel({ userId, onClose }) {
 }
 
 const menuStyles = {
-  dropdown: { position: "absolute", top: 32, right: 0, background: "#fff", border: "1px solid #DEDAC8", borderRadius: 8, boxShadow: "0 4px 16px rgba(0,0,0,0.1)", zIndex: 20, minWidth: 190, overflow: "hidden" },
-  item: { display: "flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", padding: "10px 12px", fontSize: 13, fontWeight: 600, color: "#26312B", cursor: "pointer", textAlign: "left" },
+  item: { display: "flex", alignItems: "center", gap: 10, width: "100%", border: "none", background: "transparent", padding: "12px 4px", fontSize: 14, fontWeight: 600, color: "#26312B", cursor: "pointer", textAlign: "left", borderTop: "1px solid #F0EEE3" },
   overlay: { position: "fixed", inset: 0, background: "rgba(38,49,43,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20 },
   panel: { background: "#fff", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 },
-  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
+  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
 };

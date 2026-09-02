@@ -269,7 +269,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           )}
           {waterSettings && (
             <MoreMenu userId={userId} plan={plan} onToggleLock={toggleLock}
-              waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings} />
+              waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
+              onNavigate={setTab} />
           )}
           <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
             <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
@@ -278,7 +279,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       </header>
 
       <nav style={{ ...styles.tabs, overflowX: "auto" }}>
-        {[{ id: "hoje", label: "Hoje" }, { id: "gerir", label: "Gerir plano" }, { id: "sobre", label: "Sobre" }, { id: "partilhar", label: "Partilhar" }].map(t => (
+        {[{ id: "hoje", label: "Hoje" }, { id: "gerir", label: "Gerir plano" }].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{ ...styles.tabBtn, ...(tab === t.id ? styles.tabBtnActive : {}), whiteSpace: "nowrap" }}>
             {t.label}
           </button>
