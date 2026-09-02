@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport } from "./styles";
 
-export default function AuthScreens() {
+export default function AuthScreens({ installPrompt, onInstall }) {
   const [mode, setMode] = useState("login"); // login | register | forgot | recovery
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -60,7 +60,11 @@ export default function AuthScreens() {
       <style>{`${fontImport} * { box-sizing: border-box; } ::placeholder { color: #a3a08f; }`}</style>
       <div style={styles.authCard}>
         <div style={styles.authEyebrow}>Plano Alimentar</div>
-
+{installPrompt && (
+  <button style={{ ...styles.primaryBtn, marginTop: -6, marginBottom: 16, background: "#C98A3D" }} onClick={onInstall}>
+    Instalar app no telemóvel
+  </button>
+)}
         {mode === "login" && (
           <form onSubmit={handleLogin}>
             <h1 style={styles.authTitle}>Entrar</h1>
