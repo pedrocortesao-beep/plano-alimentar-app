@@ -53,7 +53,7 @@ export default function PlanApp({ session }) {
         .select(`
           id, observations,
           meals ( id, name, meal_time, position, observations, selected_option_id,
-            options ( id, name, observations,
+            options!meal_id ( id, name, observations,
               ingredients ( id, name, qty, unit, notes )
             )
           )
