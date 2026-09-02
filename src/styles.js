@@ -25,6 +25,7 @@ export const styles = {
   tabs: { display: "flex", gap: 4, padding: "0 20px", borderBottom: "1px solid #DEDAC8", marginTop: 8 },
   tabBtn: { border: "none", background: "transparent", fontFamily: "'Karla', sans-serif", fontSize: 14, fontWeight: 600, color: "#6b7268", padding: "10px 6px", cursor: "pointer", borderBottom: "2px solid transparent", marginRight: 16 },
   tabBtnActive: { color: "#26312B", borderBottom: "2px solid #C98A3D" },
+  backLink: { display: "flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "#6b7268", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "0 0 12px", marginTop: -6 },
   main: { padding: "18px 20px 0" },
   errorBanner: { margin: "0 20px", padding: "8px 12px", background: "#F5E3E1", color: "#8A4B52", fontSize: 13, borderRadius: 6 },
   timeline: { background: "#FFFFFF", border: "1px solid #DEDAC8", borderRadius: 10, overflow: "hidden" },

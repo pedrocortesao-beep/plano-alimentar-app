@@ -268,9 +268,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             </button>
           )}
           {waterSettings && (
-            <MoreMenu userId={userId} plan={plan} onToggleLock={toggleLock}
-              waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
-              onNavigate={setTab} />
+            <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings} onNavigate={setTab} />
           )}
           <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
             <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
@@ -278,19 +276,17 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         </div>
       </header>
 
-      <nav style={{ ...styles.tabs, overflowX: "auto" }}>
-        {[{ id: "hoje", label: "Hoje" }, { id: "gerir", label: "Gerir plano" }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ ...styles.tabBtn, ...(tab === t.id ? styles.tabBtnActive : {}), whiteSpace: "nowrap" }}>
-            {t.label}
-          </button>
-        ))}
-      </nav>
 
       {saveError && <div style={styles.errorBanner}>Houve um problema a guardar a última alteração. Verifica a ligação e tenta de novo.</div>}
 
       <main style={styles.main}>
+        {tab !== "hoje" && (
+          <button style={styles.backLink} onClick={() => setTab("hoje")}>
+            <ChevronRight size={14} style={{ transform: "rotate(180deg)" }} /> Hoje
+          </button>
+        )}
         {tab === "hoje" && (
-          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} onUpdatePlanObs={updatePlanObs} />
+          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} />
         )}
         {tab === "gerir" && (
           <ManageView
@@ -310,9 +306,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   );
 }
 
-function TodayView({ plan, meals, onSelectOption, onUpdatePlanObs }) {
-  const [editingObs, setEditingObs] = useState(false);
-  const [obsDraft, setObsDraft] = useState(plan.observations || "");
+function TodayView({ plan, meals, onSelectOption }) {
   const [pinnedId, setPinnedId] = useState(null);
   const [tick, setTick] = useState(0);
 
@@ -384,27 +378,8 @@ function TodayView({ plan, meals, onSelectOption, onUpdatePlanObs }) {
       </div>
 
       <div style={styles.planObsBox}>
-        <div style={styles.planObsHead}>
-          <span style={styles.planObsTitle}>Observações do plano</span>
-          {!editingObs && (
-            <button style={styles.iconBtn} onClick={() => { setObsDraft(plan.observations || ""); setEditingObs(true); }}>
-              <Pencil size={13} />
-            </button>
-          )}
-        </div>
-        {editingObs ? (
-          <div>
-            <textarea style={styles.textarea} value={obsDraft} onChange={e => setObsDraft(e.target.value)} rows={3} />
-            <div style={styles.rowGap}>
-              <button style={styles.smallBtnPrimary} onClick={() => { onUpdatePlanObs(obsDraft); setEditingObs(false); }}>
-                <Check size={13} /> Guardar
-              </button>
-              <button style={styles.smallBtn} onClick={() => setEditingObs(false)}><X size={13} /> Cancelar</button>
-            </div>
-          </div>
-        ) : (
-          <p style={styles.planObsText}>{plan.observations || "Sem observações."}</p>
-        )}
+        <div style={styles.planObsTitle}>Observações do plano</div>
+        <p style={styles.planObsText}>{plan.observations || "Sem observações."}</p>
       </div>
     </div>
   );
@@ -423,7 +398,7 @@ function ManageView(props) {
         {locked ? "Plano bloqueado — toca para desbloquear e editar" : "Plano desbloqueado — toca para bloquear"}
       </button>
 
-      <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, opacity: locked ? 0.55 : 1 }}>
+      <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, minWidth: 0, width: "100%", opacity: locked ? 0.55 : 1 }}>
       {meals.map((meal, idx) => (
         <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1}
           expanded={expandedMeal === meal.id}

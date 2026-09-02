@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { MoreVertical, Lock, Unlock, Droplet, MessageSquarePlus, X, Info, Share2 } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2 } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
 
-export default function MoreMenu({ userId, plan, onToggleLock, waterSettings, onWaterSettingsChange, onNavigate }) {
+export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | "water" | "feedback"
 
@@ -23,12 +23,11 @@ export default function MoreMenu({ userId, plan, onToggleLock, waterSettings, on
               <span style={styles.planObsTitle}>Mais opções</span>
               <button style={styles.iconBtn} onClick={() => setOpen(false)}><X size={16} /></button>
             </div>
+            <button style={menuStyles.item} onClick={() => go("gerir")}>
+              <Settings2 size={15} /> Gerir plano
+            </button>
             <button style={menuStyles.item} onClick={() => go("partilhar")}>
               <Share2 size={15} /> Partilhar
-            </button>
-            <button style={menuStyles.item} onClick={() => { onToggleLock(); setOpen(false); }}>
-              {plan.locked ? <Unlock size={15} /> : <Lock size={15} />}
-              {plan.locked ? "Desbloquear plano" : "Bloquear plano"}
             </button>
             <button style={menuStyles.item} onClick={() => setPanel("water")}>
               <Droplet size={15} /> Lembrete de água
