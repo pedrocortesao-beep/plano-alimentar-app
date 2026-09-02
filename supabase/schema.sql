@@ -94,35 +94,3 @@ alter table public.ingredients enable row level security;
 
 create policy "ingredients: gerir os próprios" on public.ingredients
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- 6) Lembrete para beber água (definições por utilizador)
-create table public.water_reminder_settings (
-  user_id uuid primary key references public.profiles(id) on delete cascade,
-  enabled boolean not null default false,
-  interval_minutes int not null default 120,
-  start_time text not null default '08:00',  -- formato "HH:MM"
-  end_time text not null default '22:00',    -- formato "HH:MM"
-  timezone text not null default 'Europe/Lisbon',
-  last_sent_at timestamptz,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.water_reminder_settings enable row level security;
-
-create policy "water_reminder_settings: gerir o próprio" on public.water_reminder_settings
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- 7) Subscrições de notificações push (uma por dispositivo/navegador)
-create table public.push_subscriptions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references public.profiles(id) on delete cascade,
-  endpoint text not null unique,
-  p256dh text not null,
-  auth text not null,
-  created_at timestamptz not null default now()
-);
-
-alter table public.push_subscriptions enable row level security;
-
-create policy "push_subscriptions: gerir as próprias" on public.push_subscriptions
-  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);

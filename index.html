@@ -5,18 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Plano Alimentar</title>
     <link rel="manifest" href="/manifest.json" />
-    <link rel="icon" href="/icon-192.png" type="image/png" /> <link rel="apple-touch-icon" href="/icon-192.png" />
+    <link rel="icon" href="/icon-192.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="theme-color" content="#4B6350" />
     <script>
-  // Apanha o convite de instalação o mais cedo possível, antes da app
-  // React arrancar, para não o perdermos por chegar tarde demais.
-  window.__installPromptEvent = null;
-  window.addEventListener("beforeinstallprompt", (e) => {
-    e.preventDefault();
-    window.__installPromptEvent = e;
-    window.dispatchEvent(new Event("installpromptready"));
-  });
-</script>
+      // Apanha o convite de instalação o mais cedo possível, antes da app
+      // React arrancar, para não o perdermos por chegar tarde demais.
+      window.__installPromptEvent = null;
+      window.addEventListener("beforeinstallprompt", (e) => {
+        e.preventDefault();
+        window.__installPromptEvent = e;
+        window.dispatchEvent(new Event("installpromptready"));
+      });
+    </script>
   </head>
   <body>
     <div id="root"></div>

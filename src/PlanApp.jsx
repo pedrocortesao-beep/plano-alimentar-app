@@ -1,8 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Droplet } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport, UNITS } from "./styles";
-import { pushSupported, loadReminderSettings, saveReminderSettings, enablePush, disablePush } from "./waterReminder";
+import AboutTab from "./AboutTab";
+import ShareTab from "./ShareTab";
+import MoreMenu from "./MoreMenu";
+import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 
 function getCurrentMealId(meals) {
   const timed = meals.filter(m => m.meal_time);
@@ -38,7 +41,10 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [saveError, setSaveError] = useState(false);
   const [renamingProfile, setRenamingProfile] = useState(false);
   const [renameDraft, setRenameDraft] = useState("");
+  const [waterSettings, setWaterSettings] = useState(null);
   const scheduleSave = useDebouncedSave();
+
+  useWaterReminder(waterSettings);
 
   useEffect(() => { load(); }, []);
 
@@ -49,10 +55,12 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         .from("profiles").select("name").eq("id", userId).maybeSingle();
       if (profileRow?.name) setProfileName(profileRow.name);
 
+      loadWaterSettings(userId).then(setWaterSettings);
+
       let { data: planRow, error } = await supabase
         .from("plans")
         .select(`
-          id, observations,
+          id, observations, locked,
           meals ( id, name, meal_time, position, observations, selected_option_id,
             options!meal_id ( id, name, observations,
               ingredients ( id, name, qty, unit, notes )
@@ -85,6 +93,13 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     if (!name) return;
     setProfileName(name);
     const { error } = await supabase.from("profiles").update({ name }).eq("id", userId);
+    if (error) setSaveError(true);
+  };
+
+  const toggleLock = async () => {
+    const locked = !plan.locked;
+    setPlan(p => ({ ...p, locked }));
+    const { error } = await supabase.from("plans").update({ locked }).eq("id", plan.id);
     if (error) setSaveError(true);
   };
 
@@ -246,21 +261,25 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             </h1>
           )}
         </div>
-<div style={styles.rowGap}>
-  {installPrompt && (
-    <button style={styles.smallBtnPrimary} onClick={onInstall}>
-      Instalar app
-    </button>
-  )}
-  <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
-    <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
-  </button>
-</div>
+        <div style={styles.rowGap}>
+          {installPrompt && (
+            <button style={styles.smallBtnPrimary} onClick={onInstall}>
+              Instalar app
+            </button>
+          )}
+          {waterSettings && (
+            <MoreMenu userId={userId} plan={plan} onToggleLock={toggleLock}
+              waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings} />
+          )}
+          <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
+            <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
+          </button>
+        </div>
       </header>
 
-      <nav style={styles.tabs}>
-        {[{ id: "hoje", label: "Hoje" }, { id: "gerir", label: "Gerir plano" }].map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{ ...styles.tabBtn, ...(tab === t.id ? styles.tabBtnActive : {}) }}>
+      <nav style={{ ...styles.tabs, overflowX: "auto" }}>
+        {[{ id: "hoje", label: "Hoje" }, { id: "gerir", label: "Gerir plano" }, { id: "sobre", label: "Sobre" }, { id: "partilhar", label: "Partilhar" }].map(t => (
+          <button key={t.id} onClick={() => setTab(t.id)} style={{ ...styles.tabBtn, ...(tab === t.id ? styles.tabBtnActive : {}), whiteSpace: "nowrap" }}>
             {t.label}
           </button>
         ))}
@@ -269,11 +288,12 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       {saveError && <div style={styles.errorBanner}>Houve um problema a guardar a última alteração. Verifica a ligação e tenta de novo.</div>}
 
       <main style={styles.main}>
-        {tab === "hoje" ? (
+        {tab === "hoje" && (
           <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} onUpdatePlanObs={updatePlanObs} />
-        ) : (
+        )}
+        {tab === "gerir" && (
           <ManageView
-            plan={plan} meals={sortedMeals} userId={userId}
+            plan={plan} meals={sortedMeals} locked={plan.locked} onToggleLock={toggleLock}
             expandedMeal={expandedMeal} setExpandedMeal={setExpandedMeal}
             expandedOption={expandedOption} setExpandedOption={setExpandedOption}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onMoveMeal={moveMeal}
@@ -282,6 +302,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             onUpdatePlanObs={updatePlanObs}
           />
         )}
+        {tab === "sobre" && <AboutTab />}
+        {tab === "partilhar" && <ShareTab />}
       </main>
     </div>
   );
@@ -388,13 +410,19 @@ function TodayView({ plan, meals, onSelectOption, onUpdatePlanObs }) {
 }
 
 function ManageView(props) {
-  const { plan, meals, userId, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
+  const { plan, meals, locked, onToggleLock, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
     onAddMeal, onUpdateMeal, onDeleteMeal, onMoveMeal,
     onAddOption, onUpdateOption, onDeleteOption,
     onAddIngredient, onUpdateIngredient, onDeleteIngredient, onUpdatePlanObs } = props;
 
   return (
     <div>
+      <button style={lockBannerStyle(locked)} onClick={onToggleLock}>
+        <Lock size={14} />
+        {locked ? "Plano bloqueado — toca para desbloquear e editar" : "Plano desbloqueado — toca para bloquear"}
+      </button>
+
+      <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, opacity: locked ? 0.55 : 1 }}>
       {meals.map((meal, idx) => (
         <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1}
           expanded={expandedMeal === meal.id}
@@ -419,98 +447,18 @@ function ManageView(props) {
         <textarea style={styles.textarea} value={plan.observations || ""} onChange={e => onUpdatePlanObs(e.target.value)} rows={3}
           placeholder="Ex.: beber 2L de água por dia…" />
       </div>
-
-      <WaterReminderBox userId={userId} />
+      </fieldset>
     </div>
   );
 }
 
-function WaterReminderBox({ userId }) {
-  const [settings, setSettings] = useState(null);
-  const [status, setStatus] = useState("");
-  const [busy, setBusy] = useState(false);
-  const supported = pushSupported();
-
-  useEffect(() => {
-    loadReminderSettings(userId).then(setSettings).catch(() => setSettings({ enabled: false, interval_minutes: 120, start_time: "08:00", end_time: "22:00" }));
-  }, [userId]);
-
-  const persist = async (fields) => {
-    const next = { ...settings, ...fields };
-    setSettings(next);
-    try {
-      await saveReminderSettings(userId, {
-        enabled: next.enabled,
-        interval_minutes: next.interval_minutes,
-        start_time: next.start_time,
-        end_time: next.end_time,
-      });
-    } catch {
-      setStatus("Não foi possível guardar as definições do lembrete.");
-    }
+function lockBannerStyle(locked) {
+  return {
+    display: "flex", alignItems: "center", gap: 8, width: "100%",
+    border: "1px solid #DEDAC8", borderRadius: 8, padding: "10px 12px",
+    fontSize: 12.5, fontWeight: 600, cursor: "pointer", marginBottom: 12,
+    background: locked ? "#F5E3E1" : "#EAF0EA", color: locked ? "#8A4B52" : "#4B6350",
   };
-
-  const toggleEnabled = async () => {
-    const enabling = !settings.enabled;
-    setStatus("");
-    setBusy(true);
-    try {
-      if (enabling) {
-        await enablePush(userId);
-      } else {
-        await disablePush();
-      }
-      await persist({ enabled: enabling });
-    } catch (e) {
-      setStatus(e.message || "Não foi possível ativar as notificações.");
-    }
-    setBusy(false);
-  };
-
-  if (!settings) return null;
-
-  return (
-    <div style={styles.reminderBox}>
-      <div style={styles.reminderHead}>
-        <div>
-          <div style={styles.reminderTitle}><Droplet size={14} style={{ verticalAlign: "-2px", marginRight: 6 }} color="#4B6350" />Lembrete para beber água</div>
-          <p style={styles.reminderSub}>
-            {supported ? "Recebe uma notificação a lembrar de beber água, no intervalo que escolheres." : "Notificações push não são suportadas neste navegador/dispositivo."}
-          </p>
-        </div>
-        <label style={styles.toggle}>
-          <input type="checkbox" style={styles.toggleInput} checked={!!settings.enabled} disabled={!supported || busy} onChange={toggleEnabled} />
-          <span style={styles.toggleTrack(settings.enabled)} onClick={() => !busy && supported && toggleEnabled()}>
-            <span style={styles.toggleThumb(settings.enabled)} />
-          </span>
-        </label>
-      </div>
-
-      {settings.enabled && (
-        <div style={styles.reminderFields}>
-          <div style={styles.reminderField}>
-            <label style={styles.reminderFieldLabel}>De quanto em quanto tempo</label>
-            <select style={styles.reminderSelect} value={settings.interval_minutes} onChange={e => persist({ interval_minutes: Number(e.target.value) })}>
-              <option value={60}>1 em 1 hora</option>
-              <option value={90}>1h30 em 1h30</option>
-              <option value={120}>2 em 2 horas</option>
-              <option value={180}>3 em 3 horas</option>
-            </select>
-          </div>
-          <div style={styles.reminderField}>
-            <label style={styles.reminderFieldLabel}>Desde as</label>
-            <input type="time" style={styles.reminderTimeInput} value={settings.start_time} onChange={e => persist({ start_time: e.target.value })} />
-          </div>
-          <div style={styles.reminderField}>
-            <label style={styles.reminderFieldLabel}>Até às</label>
-            <input type="time" style={styles.reminderTimeInput} value={settings.end_time} onChange={e => persist({ end_time: e.target.value })} />
-          </div>
-        </div>
-      )}
-
-      {status && <p style={styles.errorText}>{status}</p>}
-    </div>
-  );
 }
 
 function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption,
