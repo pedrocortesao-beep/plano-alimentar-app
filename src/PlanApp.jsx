@@ -26,7 +26,7 @@ function useDebouncedSave(delay = 600) {
   }, [delay]);
 }
 
-export default function PlanApp({ session }) {
+export default function PlanApp({ session, installPrompt, onInstall }) {
   const userId = session.user.id;
   const [profileName, setProfileName] = useState(session.user.email);
   const [plan, setPlan] = useState(null);
@@ -245,9 +245,16 @@ export default function PlanApp({ session }) {
             </h1>
           )}
         </div>
-        <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
-          <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
-        </button>
+<div style={styles.rowGap}>
+  {installPrompt && (
+    <button style={styles.smallBtnPrimary} onClick={onInstall}>
+      Instalar app
+    </button>
+  )}
+  <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
+    <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
+  </button>
+</div>
       </header>
 
       <nav style={styles.tabs}>
