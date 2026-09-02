@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Droplet } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport, UNITS } from "./styles";
+import { pushSupported, loadReminderSettings, saveReminderSettings, enablePush, disablePush } from "./waterReminder";
 
 function getCurrentMealId(meals) {
   const timed = meals.filter(m => m.meal_time);
@@ -272,7 +273,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} onUpdatePlanObs={updatePlanObs} />
         ) : (
           <ManageView
-            plan={plan} meals={sortedMeals}
+            plan={plan} meals={sortedMeals} userId={userId}
             expandedMeal={expandedMeal} setExpandedMeal={setExpandedMeal}
             expandedOption={expandedOption} setExpandedOption={setExpandedOption}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onMoveMeal={moveMeal}
@@ -387,7 +388,7 @@ function TodayView({ plan, meals, onSelectOption, onUpdatePlanObs }) {
 }
 
 function ManageView(props) {
-  const { plan, meals, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
+  const { plan, meals, userId, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
     onAddMeal, onUpdateMeal, onDeleteMeal, onMoveMeal,
     onAddOption, onUpdateOption, onDeleteOption,
     onAddIngredient, onUpdateIngredient, onDeleteIngredient, onUpdatePlanObs } = props;
@@ -418,6 +419,96 @@ function ManageView(props) {
         <textarea style={styles.textarea} value={plan.observations || ""} onChange={e => onUpdatePlanObs(e.target.value)} rows={3}
           placeholder="Ex.: beber 2L de água por dia…" />
       </div>
+
+      <WaterReminderBox userId={userId} />
+    </div>
+  );
+}
+
+function WaterReminderBox({ userId }) {
+  const [settings, setSettings] = useState(null);
+  const [status, setStatus] = useState("");
+  const [busy, setBusy] = useState(false);
+  const supported = pushSupported();
+
+  useEffect(() => {
+    loadReminderSettings(userId).then(setSettings).catch(() => setSettings({ enabled: false, interval_minutes: 120, start_time: "08:00", end_time: "22:00" }));
+  }, [userId]);
+
+  const persist = async (fields) => {
+    const next = { ...settings, ...fields };
+    setSettings(next);
+    try {
+      await saveReminderSettings(userId, {
+        enabled: next.enabled,
+        interval_minutes: next.interval_minutes,
+        start_time: next.start_time,
+        end_time: next.end_time,
+      });
+    } catch {
+      setStatus("Não foi possível guardar as definições do lembrete.");
+    }
+  };
+
+  const toggleEnabled = async () => {
+    const enabling = !settings.enabled;
+    setStatus("");
+    setBusy(true);
+    try {
+      if (enabling) {
+        await enablePush(userId);
+      } else {
+        await disablePush();
+      }
+      await persist({ enabled: enabling });
+    } catch (e) {
+      setStatus(e.message || "Não foi possível ativar as notificações.");
+    }
+    setBusy(false);
+  };
+
+  if (!settings) return null;
+
+  return (
+    <div style={styles.reminderBox}>
+      <div style={styles.reminderHead}>
+        <div>
+          <div style={styles.reminderTitle}><Droplet size={14} style={{ verticalAlign: "-2px", marginRight: 6 }} color="#4B6350" />Lembrete para beber água</div>
+          <p style={styles.reminderSub}>
+            {supported ? "Recebe uma notificação a lembrar de beber água, no intervalo que escolheres." : "Notificações push não são suportadas neste navegador/dispositivo."}
+          </p>
+        </div>
+        <label style={styles.toggle}>
+          <input type="checkbox" style={styles.toggleInput} checked={!!settings.enabled} disabled={!supported || busy} onChange={toggleEnabled} />
+          <span style={styles.toggleTrack(settings.enabled)} onClick={() => !busy && supported && toggleEnabled()}>
+            <span style={styles.toggleThumb(settings.enabled)} />
+          </span>
+        </label>
+      </div>
+
+      {settings.enabled && (
+        <div style={styles.reminderFields}>
+          <div style={styles.reminderField}>
+            <label style={styles.reminderFieldLabel}>De quanto em quanto tempo</label>
+            <select style={styles.reminderSelect} value={settings.interval_minutes} onChange={e => persist({ interval_minutes: Number(e.target.value) })}>
+              <option value={60}>1 em 1 hora</option>
+              <option value={90}>1h30 em 1h30</option>
+              <option value={120}>2 em 2 horas</option>
+              <option value={180}>3 em 3 horas</option>
+            </select>
+          </div>
+          <div style={styles.reminderField}>
+            <label style={styles.reminderFieldLabel}>Desde as</label>
+            <input type="time" style={styles.reminderTimeInput} value={settings.start_time} onChange={e => persist({ start_time: e.target.value })} />
+          </div>
+          <div style={styles.reminderField}>
+            <label style={styles.reminderFieldLabel}>Até às</label>
+            <input type="time" style={styles.reminderTimeInput} value={settings.end_time} onChange={e => persist({ end_time: e.target.value })} />
+          </div>
+        </div>
+      )}
+
+      {status && <p style={styles.errorText}>{status}</p>}
     </div>
   );
 }

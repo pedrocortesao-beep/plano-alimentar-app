@@ -71,6 +71,26 @@ export const styles = {
   ingUnitInput: { border: "1px solid #E4E1D2", borderRadius: 6, padding: "6px 4px", fontSize: 12.5, background: "#fff" },
   addIngBtn: { display: "flex", alignItems: "center", gap: 5, alignSelf: "flex-start", background: "transparent", border: "none", color: "#4B6350", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "4px 0" },
   addOptionBtn: { display: "flex", alignItems: "center", gap: 5, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", background: "transparent", cursor: "pointer" },
+
+  reminderBox: { background: "#FFFFFF", border: "1px solid #DEDAC8", borderRadius: 10, padding: 16, marginTop: 16 },
+  reminderHead: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 },
+  reminderTitle: { fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 15 },
+  reminderSub: { fontSize: 12.5, color: "#6b7268", margin: "4px 0 0" },
+  toggle: { position: "relative", display: "inline-block", width: 40, height: 22, flexShrink: 0 },
+  toggleInput: { opacity: 0, width: 0, height: 0 },
+  toggleTrack: (checked) => ({
+    position: "absolute", inset: 0, borderRadius: 22, cursor: "pointer",
+    background: checked ? "#4B6350" : "#DEDAC8", transition: "background .15s",
+  }),
+  toggleThumb: (checked) => ({
+    position: "absolute", top: 2, left: checked ? 20 : 2, width: 18, height: 18,
+    borderRadius: "50%", background: "#fff", transition: "left .15s",
+  }),
+  reminderFields: { display: "flex", flexWrap: "wrap", gap: 14, marginTop: 14 },
+  reminderField: { display: "flex", flexDirection: "column", gap: 4 },
+  reminderFieldLabel: { fontSize: 11.5, fontWeight: 600, color: "#6b7268" },
+  reminderSelect: { border: "1px solid #DEDAC8", borderRadius: 6, padding: "6px 8px", fontSize: 13, background: "#FBFAF5" },
+  reminderTimeInput: { border: "1px solid #DEDAC8", borderRadius: 6, padding: "6px 8px", fontSize: 13, background: "#FBFAF5", width: 92 },
 };
 
 export const UNITS = ["g", "kg", "ml", "l", "unidade", "colher", "chávena"];
