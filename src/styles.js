@@ -38,7 +38,7 @@ export const styles = {
   dailyMacroTitle: { fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 14, color: "#26312B", marginBottom: 8 },
   dailyMacroRow: { display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" },
   dailyMacroItem: { fontSize: 13, color: "#4B6350" },
-  timelineRow: { display: "flex", gap: 10, padding: "16px 18px" },
+  timelineRow: { display: "flex", gap: 10, padding: "16px 18px", alignItems: "flex-start" },
   timeCol: { minWidth: 56, display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, paddingTop: 2 },
   timeText: { fontSize: 12, color: "#8A4B52", fontWeight: 700 },
   mealCol: { flex: 1, minWidth: 0 },
