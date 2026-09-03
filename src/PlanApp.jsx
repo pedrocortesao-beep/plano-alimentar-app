@@ -338,6 +338,17 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     });
   };
 
+  const contributeFood = async (ing) => {
+    if (ing.kcal_per_100 == null || !ing.name) return;
+    const { data, error } = await supabase.from("foods").insert({
+      name: ing.name.trim(), aliases: [],
+      kcal: ing.kcal_per_100, protein: ing.protein_per_100 || 0,
+      carbs: ing.carbs_per_100 || 0, fat: ing.fat_per_100 || 0,
+      grams_per_unit: ing.grams_per_unit || null,
+    }).select().single();
+    if (!error && data) setFoods(f => [...f, data]);
+  };
+
   const deleteIngredient = async (mealId, optionId, ingId) => {
     setPlan(p => ({
       ...p, meals: p.meals.map(m => m.id !== mealId ? m : {
@@ -422,7 +433,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         {tab === "gerir" && (
           <ManageView
             plan={plan} meals={sortedMeals} locked={plan.locked} onToggleLock={toggleLock} foods={foods}
-            onPropagateNutrition={propagateNutrition}
+            onPropagateNutrition={propagateNutrition} onContributeFood={contributeFood}
             expandedMeal={expandedMeal} setExpandedMeal={setExpandedMeal}
             expandedOption={expandedOption} setExpandedOption={setExpandedOption}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onMoveMeal={moveMeal}
@@ -599,7 +610,7 @@ function TodayView({ plan, meals, onSelectOption }) {
 }
 
 function ManageView(props) {
-  const { plan, meals, locked, onToggleLock, foods, onPropagateNutrition, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
+  const { plan, meals, locked, onToggleLock, foods, onPropagateNutrition, onContributeFood, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
     onAddMeal, onUpdateMeal, onDeleteMeal, onMoveMeal,
     onAddOption, onUpdateOption, onDeleteOption,
     onAddIngredient, onUpdateIngredient, onDeleteIngredient, onUpdatePlanObs } = props;
@@ -613,7 +624,7 @@ function ManageView(props) {
 
       <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, minWidth: 0, width: "100%", opacity: locked ? 0.55 : 1 }}>
       {meals.map((meal, idx) => (
-        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1} foods={foods} onPropagateNutrition={onPropagateNutrition}
+        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1} foods={foods} onPropagateNutrition={onPropagateNutrition} onContributeFood={onContributeFood}
           expanded={expandedMeal === meal.id}
           onToggle={() => setExpandedMeal(expandedMeal === meal.id ? null : meal.id)}
           expandedOption={expandedOption} setExpandedOption={setExpandedOption}
@@ -650,7 +661,7 @@ function lockBannerStyle(locked) {
   };
 }
 
-function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption, foods, onPropagateNutrition,
+function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption, foods, onPropagateNutrition, onContributeFood,
   onUpdateMeal, onDeleteMeal, onMoveMeal, onAddOption, onUpdateOption, onDeleteOption,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
 
@@ -675,7 +686,7 @@ function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption,
             value={meal.observations} onChange={e => onUpdateMeal({ observations: e.target.value })} />
 
           {meal.options.map(opt => (
-            <OptionEditor key={opt.id} option={opt} foods={foods} onPropagateNutrition={onPropagateNutrition}
+            <OptionEditor key={opt.id} option={opt} foods={foods} onPropagateNutrition={onPropagateNutrition} onContributeFood={onContributeFood}
               expanded={expandedOption === opt.id}
               onToggle={() => setExpandedOption(expandedOption === opt.id ? null : opt.id)}
               onUpdateOption={(f) => onUpdateOption(opt.id, f)}
@@ -703,7 +714,7 @@ function applySuggestionIfEmpty(ing, onUpdateIngredient, foods) {
   });
 }
 
-function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods, onPropagateNutrition,
+function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods, onPropagateNutrition, onContributeFood,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
   const [nutritionOpenId, setNutritionOpenId] = useState(null);
 
@@ -778,6 +789,11 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
                       </label>
                     )}
                   </div>
+                  {ing.kcal_per_100 != null && !findMatch(foods, ing.name) && (
+                    <button style={styles.contributeBtn} onClick={() => onContributeFood(ing)}>
+                      <Plus size={12} /> Adicionar "{ing.name}" à base de alimentos partilhada
+                    </button>
+                  )}
                 </div>
               )}
             </div>

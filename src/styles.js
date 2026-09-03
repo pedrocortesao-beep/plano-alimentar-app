@@ -88,6 +88,7 @@ export const styles = {
   nutritionField: { fontSize: 11, color: "#6b7268", fontWeight: 600, display: "flex", flexDirection: "column", gap: 3, minWidth: 0 },
   nutritionInput: { border: "1px solid #DEDAC8", borderRadius: 6, padding: "7px 8px", fontSize: 13, background: "#FBFAF5", width: "100%", minWidth: 0, boxSizing: "border-box" },
   suggestionBtn: { display: "block", width: "100%", textAlign: "left", background: "#FBF3E4", border: "1px solid #E8CFA0", color: "#8A6A2E", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", marginBottom: 8, lineHeight: 1.4 },
+  contributeBtn: { display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center", background: "transparent", border: "1px dashed #C3BFA9", color: "#4B6350", borderRadius: 6, padding: "7px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", marginTop: 8 },
   addOptionBtn: { display: "flex", alignItems: "center", gap: 5, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", background: "transparent", cursor: "pointer" },
 };
 
