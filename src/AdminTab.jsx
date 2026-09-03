@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ShieldCheck, Shield, ChevronUp, ChevronDown, Check, Plus, Trash2, Folder } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
-import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE, GROUPS, unplacedItems } from "./menuItems";
+import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE, GROUPS } from "./menuItems";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -160,11 +160,13 @@ export default function AdminTab({ userId }) {
                     <button style={styles.smallBtn} onClick={() => placeItem(key, null)}>Tirar do submenu</button>
                   </div>
                 ))}
-                {unplacedItems(structure).length > 0 && (
+                {MENU_ITEMS.filter(i => !(node.items || []).includes(i.key)).length > 0 && (
                   <select style={{ ...styles.input, marginTop: 6 }} value=""
                     onChange={e => e.target.value && placeItem(e.target.value, node.id)}>
                     <option value="">+ Adicionar item a este submenu…</option>
-                    {unplacedItems(structure).map(i => <option key={i.key} value={i.key}>{i.label}</option>)}
+                    {MENU_ITEMS.filter(i => !(node.items || []).includes(i.key)).map(i => (
+                      <option key={i.key} value={i.key}>{i.label}</option>
+                    ))}
                   </select>
                 )}
               </div>
