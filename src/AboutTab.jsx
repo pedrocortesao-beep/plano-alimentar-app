@@ -1,8 +1,11 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.7.1";
+export const APP_VERSION = "1.8.1";
 
 export const CHANGELOG = [
+  { version: "1.8.1", notes: "Total estimado de calorias e macros do dia, logo no topo do ecrã \"Hoje\"." },
+  { version: "1.8.0", notes: "Base de alimentos passou para a base de dados — o admin pode adicionar/editar alimentos, atualizado para todos sem nova versão." },
+  { version: "1.7.2", notes: "Sugestões nutricionais aplicadas automaticamente, e correção do desalinhamento no ecrã de macros." },
   { version: "1.7.1", notes: "Sugestões automáticas de valores nutricionais para ingredientes comuns (aveia, banana, frango, ...)." },
   { version: "1.7.0", notes: "Valores nutricionais por ingrediente e soma automática de calorias/macros por opção." },
   { version: "1.6.3", notes: "Correção no ecrã Hoje: sem quantidade, a unidade não aparece; unidades \"unidade\" mostram \"Un\"." },

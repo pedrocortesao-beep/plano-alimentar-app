@@ -13,7 +13,7 @@ import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 import { getTodayPhrase } from "./dailyPhrase";
 import { approxGrams, computeMacros } from "./unitConversions";
-import { suggestNutrition } from "./foodDatabase";
+import { loadFoods, findMatch } from "./foodDatabase";
 
 function computeVisibleKeys(menuVisibility, isTutor) {
   if (!menuVisibility) return null; // ainda a carregar: mostra tudo por omissão
@@ -56,6 +56,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [myModules, setMyModules] = useState(["plano_alimentar"]);
   const [tutees, setTutees] = useState([]);
   const [appSettings, setAppSettings] = useState(null);
+  const [foods, setFoods] = useState([]);
   const [profile, setProfile] = useState({ name: session.user.email, birth_date: null, sex: null, modules: ["plano_alimentar"] });
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -93,6 +94,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     loadTutees();
     supabase.from("app_settings").select("*").eq("id", true).maybeSingle()
       .then(({ data }) => { if (data) setAppSettings(data); });
+    loadFoods().then(setFoods);
   }, []);
 
   async function loadTutees() {
@@ -341,7 +343,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         )}
         {tab === "gerir" && (
           <ManageView
-            plan={plan} meals={sortedMeals} locked={plan.locked} onToggleLock={toggleLock}
+            plan={plan} meals={sortedMeals} locked={plan.locked} onToggleLock={toggleLock} foods={foods}
             expandedMeal={expandedMeal} setExpandedMeal={setExpandedMeal}
             expandedOption={expandedOption} setExpandedOption={setExpandedOption}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onMoveMeal={moveMeal}
@@ -366,6 +368,30 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       </main>
     </div>
   );
+}
+
+function computeDailyMacros(meals) {
+  let kcal = 0, protein = 0, carbs = 0, fat = 0, any = false, incomplete = false;
+  meals.forEach(meal => {
+    const selected = meal.options.find(o => o.id === meal.selected_option_id) || meal.options[0];
+    if (!selected) return;
+    const m = computeMacros(selected.ingredients);
+    if (!m) {
+      if ((selected.ingredients || []).some(i => Number(i.qty))) incomplete = true;
+      return;
+    }
+    any = true;
+    kcal += m.kcal; protein += m.protein; carbs += m.carbs; fat += m.fat;
+    if (m.incomplete) incomplete = true;
+  });
+  if (!any) return null;
+  return {
+    kcal: Math.round(kcal),
+    protein: Math.round(protein * 10) / 10,
+    carbs: Math.round(carbs * 10) / 10,
+    fat: Math.round(fat * 10) / 10,
+    incomplete,
+  };
 }
 
 function MacroSummary({ ingredients }) {
@@ -395,11 +421,28 @@ function TodayView({ plan, meals, onSelectOption }) {
   const openMealId = pinnedId || autoId;
   const toggleMeal = (id) => { if (id !== openMealId) setPinnedId(id); };
 
+  const dailyTotals = computeDailyMacros(meals);
+
   return (
     <div>
       <div style={styles.phraseCard}>
         <p style={styles.phraseText}>"{getTodayPhrase()}"</p>
       </div>
+
+      {dailyTotals && (
+        <div style={styles.dailyMacroCard}>
+          <div style={styles.dailyMacroTitle}>Total estimado do dia</div>
+          <div style={styles.dailyMacroRow}>
+            <div style={styles.dailyMacroItem}><strong>{dailyTotals.kcal}</strong><span> kcal</span></div>
+            <div style={styles.dailyMacroItem}><strong>{dailyTotals.protein}g</strong><span> proteína</span></div>
+            <div style={styles.dailyMacroItem}><strong>{dailyTotals.carbs}g</strong><span> hidratos</span></div>
+            <div style={styles.dailyMacroItem}><strong>{dailyTotals.fat}g</strong><span> gordura</span></div>
+          </div>
+          {dailyTotals.incomplete && (
+            <p style={styles.macroIncomplete}>Algumas refeições têm ingredientes sem dados nutricionais — o total pode estar abaixo do real.</p>
+          )}
+        </div>
+      )}
 
       <div style={styles.timeline}>
         {meals.length === 0 && (
@@ -474,7 +517,7 @@ function TodayView({ plan, meals, onSelectOption }) {
 }
 
 function ManageView(props) {
-  const { plan, meals, locked, onToggleLock, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
+  const { plan, meals, locked, onToggleLock, foods, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
     onAddMeal, onUpdateMeal, onDeleteMeal, onMoveMeal,
     onAddOption, onUpdateOption, onDeleteOption,
     onAddIngredient, onUpdateIngredient, onDeleteIngredient, onUpdatePlanObs } = props;
@@ -488,7 +531,7 @@ function ManageView(props) {
 
       <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, minWidth: 0, width: "100%", opacity: locked ? 0.55 : 1 }}>
       {meals.map((meal, idx) => (
-        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1}
+        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1} foods={foods}
           expanded={expandedMeal === meal.id}
           onToggle={() => setExpandedMeal(expandedMeal === meal.id ? null : meal.id)}
           expandedOption={expandedOption} setExpandedOption={setExpandedOption}
@@ -525,7 +568,7 @@ function lockBannerStyle(locked) {
   };
 }
 
-function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption,
+function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption, foods,
   onUpdateMeal, onDeleteMeal, onMoveMeal, onAddOption, onUpdateOption, onDeleteOption,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
 
@@ -550,7 +593,7 @@ function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption,
             value={meal.observations} onChange={e => onUpdateMeal({ observations: e.target.value })} />
 
           {meal.options.map(opt => (
-            <OptionEditor key={opt.id} option={opt}
+            <OptionEditor key={opt.id} option={opt} foods={foods}
               expanded={expandedOption === opt.id}
               onToggle={() => setExpandedOption(expandedOption === opt.id ? null : opt.id)}
               onUpdateOption={(f) => onUpdateOption(opt.id, f)}
@@ -567,7 +610,18 @@ function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption,
   );
 }
 
-function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption,
+function applySuggestionIfEmpty(ing, onUpdateIngredient, foods) {
+  if (ing.kcal_per_100 != null) return; // já tem valores — não sobrepor
+  const match = findMatch(foods, ing.name);
+  if (!match) return;
+  onUpdateIngredient(ing.id, {
+    kcal_per_100: match.kcal, protein_per_100: match.protein,
+    carbs_per_100: match.carbs, fat_per_100: match.fat,
+    ...(ing.unit === "unidade" && match.grams_per_unit ? { grams_per_unit: match.grams_per_unit } : {}),
+  });
+}
+
+function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
   const [nutritionOpenId, setNutritionOpenId] = useState(null);
 
@@ -586,59 +640,53 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
           {option.ingredients.map(ing => (
             <div key={ing.id}>
               <div style={styles.ingRow}>
-                <input style={styles.ingNameInput} placeholder="Ingrediente" value={ing.name} onChange={e => onUpdateIngredient(ing.id, { name: e.target.value })} />
+                <input style={styles.ingNameInput} placeholder="Ingrediente" value={ing.name}
+                  onChange={e => onUpdateIngredient(ing.id, { name: e.target.value })}
+                  onBlur={() => applySuggestionIfEmpty(ing, onUpdateIngredient, foods)} />
                 <input style={styles.ingQtyInput} placeholder="Qtd" value={ing.qty} onChange={e => onUpdateIngredient(ing.id, { qty: e.target.value })} />
                 <select style={styles.ingUnitInput} value={ing.unit || "g"} onChange={e => onUpdateIngredient(ing.id, { unit: e.target.value })}>
                   {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                 </select>
                 <button style={styles.iconBtn}
-                  onClick={() => setNutritionOpenId(nutritionOpenId === ing.id ? null : ing.id)}
+                  onClick={() => {
+                    applySuggestionIfEmpty(ing, onUpdateIngredient, foods);
+                    setNutritionOpenId(nutritionOpenId === ing.id ? null : ing.id);
+                  }}
                   title="Valores nutricionais">
-                  <Flame size={13} color={ing.kcal_per_100 != null ? "#C98A3D" : (suggestNutrition(ing.name) ? "#E8CFA0" : "#a3a08f")} />
+                  <Flame size={13} color={ing.kcal_per_100 != null ? "#C98A3D" : (findMatch(foods, ing.name) ? "#E8CFA0" : "#a3a08f")} />
                 </button>
                 <button style={{ ...styles.iconBtn, color: "#8A4B52" }} onClick={() => onDeleteIngredient(ing.id)}><Trash2 size={12} /></button>
               </div>
               {nutritionOpenId === ing.id && (
                 <div style={styles.nutritionBox}>
-                  <p style={{ ...styles.emptyMeal, marginBottom: 6 }}>Valores por 100 g/ml:</p>
-                  {ing.kcal_per_100 == null && (() => {
-                    const suggestion = suggestNutrition(ing.name);
-                    if (!suggestion) return null;
-                    return (
-                      <button style={styles.suggestionBtn} onClick={() => onUpdateIngredient(ing.id, {
-                        kcal_per_100: suggestion.kcal, protein_per_100: suggestion.protein,
-                        carbs_per_100: suggestion.carbs, fat_per_100: suggestion.fat,
-                        ...(ing.unit === "unidade" && suggestion.gramsPerUnit ? { grams_per_unit: suggestion.gramsPerUnit } : {}),
-                      })}>
-                        <Flame size={13} /> Usar sugestão: {suggestion.kcal} kcal, {suggestion.protein}g prot., {suggestion.carbs}g hid., {suggestion.fat}g gord. (por 100g)
-                      </button>
-                    );
-                  })()}
+                  <p style={{ ...styles.emptyMeal, marginBottom: 6 }}>
+                    Valores por 100 g/ml{ing.kcal_per_100 != null && findMatch(foods, ing.name) ? " (sugestão já aplicada — ajusta se quiseres)" : ""}:
+                  </p>
                   <div style={styles.nutritionGrid}>
                     <label style={styles.nutritionField}>
                       kcal
-                      <input style={styles.input} type="number" min="0" value={ing.kcal_per_100 ?? ""}
+                      <input style={styles.nutritionInput} type="number" min="0" value={ing.kcal_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { kcal_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Proteína (g)
-                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.protein_per_100 ?? ""}
+                      <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.protein_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { protein_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Hidratos (g)
-                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.carbs_per_100 ?? ""}
+                      <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.carbs_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { carbs_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Gordura (g)
-                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.fat_per_100 ?? ""}
+                      <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.fat_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { fat_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
                     </label>
                     {ing.unit === "unidade" && (
                       <label style={styles.nutritionField}>
                         Peso aprox. por unidade (g)
-                        <input style={styles.input} type="number" min="0" value={ing.grams_per_unit ?? ""}
+                        <input style={styles.nutritionInput} type="number" min="0" value={ing.grams_per_unit ?? ""}
                           onChange={e => onUpdateIngredient(ing.id, { grams_per_unit: e.target.value === "" ? null : Number(e.target.value) })} />
                       </label>
                     )}

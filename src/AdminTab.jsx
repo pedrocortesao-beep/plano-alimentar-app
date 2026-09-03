@@ -3,6 +3,7 @@ import { ShieldCheck, Shield, ChevronUp, ChevronDown, Check, Plus, Trash2, Folde
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE, GROUPS } from "./menuItems";
+import FoodsAdminTab from "./FoodsAdminTab";
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -225,6 +226,8 @@ export default function AdminTab({ userId }) {
         </div>
         {saved && <p style={styles.messageText}><Check size={13} style={{ verticalAlign: "-2px" }} /> Guardado</p>}
       </div>
+
+      <FoodsAdminTab />
     </div>
   );
 }
