@@ -38,13 +38,13 @@ export function gramsForIngredient(ing) {
 export function computeMacros(ingredients) {
   let kcal = 0, protein = 0, carbs = 0, fat = 0;
   let anyCounted = false;
-  let incomplete = false;
+  const missing = [];
 
   (ingredients || []).forEach(ing => {
     const grams = gramsForIngredient(ing);
     const hasNutrition = ing.kcal_per_100 != null || ing.protein_per_100 != null || ing.carbs_per_100 != null || ing.fat_per_100 != null;
     if (grams == null || !hasNutrition) {
-      if (Number(ing.qty)) incomplete = true; // tem quantidade, mas não dá para contabilizar
+      if (Number(ing.qty) && ing.name) missing.push(ing.name); // tem quantidade, mas não dá para contabilizar
       return;
     }
     anyCounted = true;
@@ -61,6 +61,7 @@ export function computeMacros(ingredients) {
     protein: Math.round(protein * 10) / 10,
     carbs: Math.round(carbs * 10) / 10,
     fat: Math.round(fat * 10) / 10,
-    incomplete,
+    incomplete: missing.length > 0,
+    missing,
   };
 }

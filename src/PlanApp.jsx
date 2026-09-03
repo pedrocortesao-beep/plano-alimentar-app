@@ -371,18 +371,19 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 }
 
 function computeDailyMacros(meals) {
-  let kcal = 0, protein = 0, carbs = 0, fat = 0, any = false, incomplete = false;
+  let kcal = 0, protein = 0, carbs = 0, fat = 0, any = false;
+  const missing = [];
   meals.forEach(meal => {
-    const selected = meal.options.find(o => o.id === meal.selected_option_id) || meal.options[0];
-    if (!selected) return;
-    const m = computeMacros(selected.ingredients);
+    const firstOption = meal.options[0];
+    if (!firstOption) return;
+    const m = computeMacros(firstOption.ingredients);
     if (!m) {
-      if ((selected.ingredients || []).some(i => Number(i.qty))) incomplete = true;
+      (firstOption.ingredients || []).forEach(i => { if (Number(i.qty) && i.name) missing.push(i.name); });
       return;
     }
     any = true;
     kcal += m.kcal; protein += m.protein; carbs += m.carbs; fat += m.fat;
-    if (m.incomplete) incomplete = true;
+    missing.push(...m.missing);
   });
   if (!any) return null;
   return {
@@ -390,7 +391,8 @@ function computeDailyMacros(meals) {
     protein: Math.round(protein * 10) / 10,
     carbs: Math.round(carbs * 10) / 10,
     fat: Math.round(fat * 10) / 10,
-    incomplete,
+    incomplete: missing.length > 0,
+    missing,
   };
 }
 
@@ -403,7 +405,7 @@ function MacroSummary({ ingredients }) {
       <span><strong>{macros.protein}g</strong> proteína</span>
       <span><strong>{macros.carbs}g</strong> hidratos</span>
       <span><strong>{macros.fat}g</strong> gordura</span>
-      {macros.incomplete && <span style={styles.macroIncomplete}>(alguns ingredientes sem dados nutricionais)</span>}
+      {macros.incomplete && <span style={styles.macroIncomplete}>(sem dados: {macros.missing.join(", ")})</span>}
     </div>
   );
 }
@@ -439,8 +441,9 @@ function TodayView({ plan, meals, onSelectOption }) {
             <div style={styles.dailyMacroItem}><strong>{dailyTotals.fat}g</strong><span> gordura</span></div>
           </div>
           {dailyTotals.incomplete && (
-            <p style={styles.macroIncomplete}>Algumas refeições têm ingredientes sem dados nutricionais — o total pode estar abaixo do real.</p>
+            <p style={styles.macroIncomplete}>Sem dados nutricionais: {dailyTotals.missing.join(", ")}.</p>
           )}
+          <p style={styles.macroIncomplete}>Baseado na 1ª opção de cada refeição.</p>
         </div>
       )}
 
