@@ -41,11 +41,19 @@ function getCurrentMealId(meals) {
 
 // Atrasa a escrita na base de dados (para não disparar um pedido por cada tecla),
 // mas o estado local (o que vês no ecrã) atualiza-se sempre de imediato.
+// Junta todas as alterações feitas dentro da janela de espera, para não
+// perder campos anteriores quando editas vários seguidos rapidamente.
 function useDebouncedSave(delay = 600) {
   const timers = useRef({});
-  return useCallback((key, fn) => {
+  const pending = useRef({});
+  return useCallback((key, fields, saveFn) => {
+    pending.current[key] = { ...(pending.current[key] || {}), ...fields };
     if (timers.current[key]) clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(fn, delay);
+    timers.current[key] = setTimeout(async () => {
+      const toSave = pending.current[key];
+      delete pending.current[key];
+      await saveFn(toSave);
+    }, delay);
   }, [delay]);
 }
 
@@ -174,8 +182,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
   const updateMeal = (mealId, fields) => {
     setPlan(p => ({ ...p, meals: p.meals.map(m => m.id === mealId ? { ...m, ...fields } : m) }));
-    scheduleSave(`meal:${mealId}`, async () => {
-      const { error } = await supabase.from("meals").update(fields).eq("id", mealId);
+    scheduleSave(`meal:${mealId}`, fields, async (toSave) => {
+      const { error } = await supabase.from("meals").update(toSave).eq("id", mealId);
       if (error) setSaveError(true);
     });
   };
@@ -217,8 +225,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
   const updateOption = (mealId, optionId, fields) => {
     setPlan(p => ({ ...p, meals: p.meals.map(m => m.id !== mealId ? m : { ...m, options: m.options.map(o => o.id === optionId ? { ...o, ...fields } : o) }) }));
-    scheduleSave(`option:${optionId}`, async () => {
-      const { error } = await supabase.from("options").update(fields).eq("id", optionId);
+    scheduleSave(`option:${optionId}`, fields, async (toSave) => {
+      const { error } = await supabase.from("options").update(toSave).eq("id", optionId);
       if (error) setSaveError(true);
     });
   };
@@ -255,8 +263,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         })
       })
     }));
-    scheduleSave(`ing:${ingId}`, async () => {
-      const { error } = await supabase.from("ingredients").update(fields).eq("id", ingId);
+    scheduleSave(`ing:${ingId}`, fields, async (toSave) => {
+      const { error } = await supabase.from("ingredients").update(toSave).eq("id", ingId);
       if (error) setSaveError(true);
     });
   };
@@ -312,8 +320,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
   const updatePlanObs = (v) => {
     setPlan(p => ({ ...p, observations: v }));
-    scheduleSave(`plan:${plan.id}`, async () => {
-      const { error } = await supabase.from("plans").update({ observations: v }).eq("id", plan.id);
+    scheduleSave(`plan:${plan.id}`, { observations: v }, async (toSave) => {
+      const { error } = await supabase.from("plans").update(toSave).eq("id", plan.id);
       if (error) setSaveError(true);
     });
   };
