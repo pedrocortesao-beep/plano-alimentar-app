@@ -278,6 +278,28 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan, foods, viewingUserId]);
 
+  // Quando preenches os valores nutricionais à mão num ingrediente, aplica os
+  // mesmos valores a outros ingredientes com o mesmo nome, no resto do plano,
+  // que ainda não os tenham (para não teres de repetir o preenchimento).
+  const propagateNutrition = (sourceIng) => {
+    if (sourceIng.kcal_per_100 == null || !sourceIng.name) return;
+    const norm = sourceIng.name.trim().toLowerCase();
+    plan.meals.forEach(meal => {
+      meal.options.forEach(opt => {
+        opt.ingredients.forEach(ing => {
+          if (ing.id === sourceIng.id) return;
+          if (ing.kcal_per_100 != null) return;
+          if ((ing.name || "").trim().toLowerCase() !== norm) return;
+          updateIngredient(meal.id, opt.id, ing.id, {
+            kcal_per_100: sourceIng.kcal_per_100, protein_per_100: sourceIng.protein_per_100,
+            carbs_per_100: sourceIng.carbs_per_100, fat_per_100: sourceIng.fat_per_100,
+            ...(ing.unit === "unidade" && sourceIng.grams_per_unit ? { grams_per_unit: sourceIng.grams_per_unit } : {}),
+          });
+        });
+      });
+    });
+  };
+
   const deleteIngredient = async (mealId, optionId, ingId) => {
     setPlan(p => ({
       ...p, meals: p.meals.map(m => m.id !== mealId ? m : {
@@ -362,6 +384,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         {tab === "gerir" && (
           <ManageView
             plan={plan} meals={sortedMeals} locked={plan.locked} onToggleLock={toggleLock} foods={foods}
+            onPropagateNutrition={propagateNutrition}
             expandedMeal={expandedMeal} setExpandedMeal={setExpandedMeal}
             expandedOption={expandedOption} setExpandedOption={setExpandedOption}
             onAddMeal={addMeal} onUpdateMeal={updateMeal} onDeleteMeal={deleteMeal} onMoveMeal={moveMeal}
@@ -538,7 +561,7 @@ function TodayView({ plan, meals, onSelectOption }) {
 }
 
 function ManageView(props) {
-  const { plan, meals, locked, onToggleLock, foods, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
+  const { plan, meals, locked, onToggleLock, foods, onPropagateNutrition, expandedMeal, setExpandedMeal, expandedOption, setExpandedOption,
     onAddMeal, onUpdateMeal, onDeleteMeal, onMoveMeal,
     onAddOption, onUpdateOption, onDeleteOption,
     onAddIngredient, onUpdateIngredient, onDeleteIngredient, onUpdatePlanObs } = props;
@@ -552,7 +575,7 @@ function ManageView(props) {
 
       <fieldset disabled={locked} style={{ border: "none", padding: 0, margin: 0, minWidth: 0, width: "100%", opacity: locked ? 0.55 : 1 }}>
       {meals.map((meal, idx) => (
-        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1} foods={foods}
+        <MealEditor key={meal.id} meal={meal} isFirst={idx === 0} isLast={idx === meals.length - 1} foods={foods} onPropagateNutrition={onPropagateNutrition}
           expanded={expandedMeal === meal.id}
           onToggle={() => setExpandedMeal(expandedMeal === meal.id ? null : meal.id)}
           expandedOption={expandedOption} setExpandedOption={setExpandedOption}
@@ -589,7 +612,7 @@ function lockBannerStyle(locked) {
   };
 }
 
-function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption, foods,
+function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption, setExpandedOption, foods, onPropagateNutrition,
   onUpdateMeal, onDeleteMeal, onMoveMeal, onAddOption, onUpdateOption, onDeleteOption,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
 
@@ -614,7 +637,7 @@ function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption,
             value={meal.observations} onChange={e => onUpdateMeal({ observations: e.target.value })} />
 
           {meal.options.map(opt => (
-            <OptionEditor key={opt.id} option={opt} foods={foods}
+            <OptionEditor key={opt.id} option={opt} foods={foods} onPropagateNutrition={onPropagateNutrition}
               expanded={expandedOption === opt.id}
               onToggle={() => setExpandedOption(expandedOption === opt.id ? null : opt.id)}
               onUpdateOption={(f) => onUpdateOption(opt.id, f)}
@@ -642,7 +665,7 @@ function applySuggestionIfEmpty(ing, onUpdateIngredient, foods) {
   });
 }
 
-function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods,
+function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods, onPropagateNutrition,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
   const [nutritionOpenId, setNutritionOpenId] = useState(null);
 
@@ -687,28 +710,33 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
                     <label style={styles.nutritionField}>
                       kcal
                       <input style={styles.nutritionInput} type="number" min="0" value={ing.kcal_per_100 ?? ""}
-                        onChange={e => onUpdateIngredient(ing.id, { kcal_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                        onChange={e => onUpdateIngredient(ing.id, { kcal_per_100: e.target.value === "" ? null : Number(e.target.value) })}
+                        onBlur={() => onPropagateNutrition({ ...ing })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Proteína (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.protein_per_100 ?? ""}
-                        onChange={e => onUpdateIngredient(ing.id, { protein_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                        onChange={e => onUpdateIngredient(ing.id, { protein_per_100: e.target.value === "" ? null : Number(e.target.value) })}
+                        onBlur={() => onPropagateNutrition({ ...ing })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Hidratos (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.carbs_per_100 ?? ""}
-                        onChange={e => onUpdateIngredient(ing.id, { carbs_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                        onChange={e => onUpdateIngredient(ing.id, { carbs_per_100: e.target.value === "" ? null : Number(e.target.value) })}
+                        onBlur={() => onPropagateNutrition({ ...ing })} />
                     </label>
                     <label style={styles.nutritionField}>
                       Gordura (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.fat_per_100 ?? ""}
-                        onChange={e => onUpdateIngredient(ing.id, { fat_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                        onChange={e => onUpdateIngredient(ing.id, { fat_per_100: e.target.value === "" ? null : Number(e.target.value) })}
+                        onBlur={() => onPropagateNutrition({ ...ing })} />
                     </label>
                     {ing.unit === "unidade" && (
                       <label style={styles.nutritionField}>
                         Peso aprox. por unidade (g)
                         <input style={styles.nutritionInput} type="number" min="0" value={ing.grams_per_unit ?? ""}
-                          onChange={e => onUpdateIngredient(ing.id, { grams_per_unit: e.target.value === "" ? null : Number(e.target.value) })} />
+                          onChange={e => onUpdateIngredient(ing.id, { grams_per_unit: e.target.value === "" ? null : Number(e.target.value) })}
+                          onBlur={() => onPropagateNutrition({ ...ing })} />
                       </label>
                     )}
                   </div>
