@@ -67,6 +67,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [waterSettings, setWaterSettings] = useState(null);
   const [updateNotice, setUpdateNotice] = useState(null);
   const scheduleSave = useDebouncedSave();
+  const autoFilledForRef = useRef(null);
 
   useWaterReminder(waterSettings);
 
@@ -259,6 +260,23 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       if (error) setSaveError(true);
     });
   };
+
+  // Assim que o plano e a base de alimentos carregam, preenche automaticamente
+  // os valores nutricionais de ingredientes já existentes que ainda não os
+  // têm (uma vez por pessoa gerida, para não repetir a cada alteração).
+  useEffect(() => {
+    if (!plan || !foods.length) return;
+    if (autoFilledForRef.current === viewingUserId) return;
+    autoFilledForRef.current = viewingUserId;
+    plan.meals.forEach(meal => {
+      meal.options.forEach(opt => {
+        opt.ingredients.forEach(ing => {
+          applySuggestionIfEmpty(ing, (ingId, fields) => updateIngredient(meal.id, opt.id, ingId, fields), foods);
+        });
+      });
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, foods, viewingUserId]);
 
   const deleteIngredient = async (mealId, optionId, ingId) => {
     setPlan(p => ({

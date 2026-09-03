@@ -1,8 +1,9 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.8.2";
+export const APP_VERSION = "1.8.3";
 
 export const CHANGELOG = [
+  { version: "1.8.3", notes: "Sugestões nutricionais aplicam-se automaticamente a todos os ingredientes já existentes, sem precisar de abrir cada opção." },
   { version: "1.8.2", notes: "Total do dia soma sempre a 1ª opção de cada refeição, e os avisos dizem agora quais ingredientes faltam." },
   { version: "1.8.1", notes: "Total estimado de calorias e macros do dia, logo no topo do ecrã \"Hoje\"." },
   { version: "1.8.0", notes: "Base de alimentos passou para a base de dados — o admin pode adicionar/editar alimentos, atualizado para todos sem nova versão." },
