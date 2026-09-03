@@ -1,14 +1,42 @@
 import { useState } from "react";
-import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck, ChevronRight, ArrowLeft, Folder } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
+import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE } from "./menuItems";
 
-export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin }) {
+const ICONS = { gerir: Settings2, partilhar: Share2, agua: Droplet, sugestoes: MessageSquarePlus, dados: UserCircle, modulos: LayoutGrid, tutores: Users };
+const PANEL_ITEMS = { agua: "water", sugestoes: "feedback" };
+
+export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin, menuStructure, menuVisibleKeys }) {
   const [open, setOpen] = useState(false);
-  const [panel, setPanel] = useState(null); // null | "water" | "feedback"
+  const [panel, setPanel] = useState(null); // null | "water" | "feedback" | { submenu: node }
 
-  const go = (tabId) => { onNavigate(tabId); setOpen(false); };
+  const go = (tabId) => { onNavigate(tabId); setOpen(false); setPanel(null); };
+
+  const isVisible = (key) => isAdmin || !menuVisibleKeys || menuVisibleKeys.has(key);
+
+  const structure = menuStructure && menuStructure.length ? menuStructure : DEFAULT_MENU_STRUCTURE;
+
+  const renderItemButton = (key) => {
+    const item = MENU_ITEMS.find(i => i.key === key);
+    if (!item) return null;
+    const Icon = ICONS[key];
+    const panelName = PANEL_ITEMS[key];
+    return (
+      <button key={key} style={menuStyles.item} onClick={() => panelName ? setPanel(panelName) : go(key)}>
+        <Icon size={15} /> {item.label}
+      </button>
+    );
+  };
+
+  const rootNodes = structure.filter(node => {
+    if (node.type === "item") return isVisible(node.key);
+    if (node.type === "submenu") return (node.items || []).some(isVisible);
+    return false;
+  });
+
+  const isSubmenuPanel = panel && typeof panel === "object" && panel.submenu;
 
   return (
     <>
@@ -23,27 +51,12 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
               <span style={styles.planObsTitle}>Mais opções</span>
               <button style={styles.iconBtn} onClick={() => setOpen(false)}><X size={16} /></button>
             </div>
-            <button style={menuStyles.item} onClick={() => go("gerir")}>
-              <Settings2 size={15} /> Gerir plano
-            </button>
-            <button style={menuStyles.item} onClick={() => go("partilhar")}>
-              <Share2 size={15} /> Partilhar
-            </button>
-            <button style={menuStyles.item} onClick={() => setPanel("water")}>
-              <Droplet size={15} /> Lembrete de água
-            </button>
-            <button style={menuStyles.item} onClick={() => setPanel("feedback")}>
-              <MessageSquarePlus size={15} /> Sugerir melhorias
-            </button>
-            <button style={menuStyles.item} onClick={() => go("dados")}>
-              <UserCircle size={15} /> Dados pessoais
-            </button>
-            <button style={menuStyles.item} onClick={() => go("modulos")}>
-              <LayoutGrid size={15} /> Módulos
-            </button>
-            <button style={menuStyles.item} onClick={() => go("tutores")}>
-              <Users size={15} /> Tutores
-            </button>
+            {rootNodes.map(node => node.type === "item" ? renderItemButton(node.key) : (
+              <button key={node.id || node.label} style={menuStyles.item} onClick={() => setPanel({ submenu: node })}>
+                <Folder size={15} /> {node.label}
+                <ChevronRight size={15} style={{ marginLeft: "auto" }} />
+              </button>
+            ))}
             {isAdmin && (
               <button style={menuStyles.item} onClick={() => go("admin")}>
                 <ShieldCheck size={15} /> Administração
@@ -52,6 +65,19 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
             <button style={menuStyles.item} onClick={() => go("sobre")}>
               <Info size={15} /> Sobre a app
             </button>
+          </div>
+        </div>
+      )}
+
+      {open && isSubmenuPanel && (
+        <div style={menuStyles.overlay} onClick={() => setOpen(false)}>
+          <div style={menuStyles.panel} onClick={e => e.stopPropagation()}>
+            <div style={menuStyles.panelHead}>
+              <button style={styles.iconBtn} onClick={() => setPanel(null)}><ArrowLeft size={16} /></button>
+              <span style={styles.planObsTitle}>{panel.submenu.label}</span>
+              <button style={styles.iconBtn} onClick={() => setOpen(false)}><X size={16} /></button>
+            </div>
+            {(panel.submenu.items || []).filter(isVisible).map(key => renderItemButton(key))}
           </div>
         </div>
       )}
@@ -159,5 +185,5 @@ const menuStyles = {
   item: { display: "flex", alignItems: "center", gap: 10, width: "100%", border: "none", background: "transparent", padding: "12px 4px", fontSize: 14, fontWeight: 600, color: "#26312B", cursor: "pointer", textAlign: "left", borderTop: "1px solid #F0EEE3" },
   overlay: { position: "fixed", inset: 0, background: "rgba(38,49,43,0.35)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 30, padding: 20 },
   panel: { background: "#fff", borderRadius: 12, padding: 20, width: "100%", maxWidth: 340 },
-  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  panelHead: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, gap: 8 },
 };

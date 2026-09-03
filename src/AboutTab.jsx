@@ -1,8 +1,10 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.4.1";
+export const APP_VERSION = "1.6.0";
 
 export const CHANGELOG = [
+  { version: "1.6.0", notes: "Submenus no menu ⋮ — o administrador pode agrupar itens." },
+  { version: "1.5.0", notes: "Administração: ordem do menu, visibilidade por grupo, e nº de alterações visíveis." },
   { version: "1.4.1", notes: "Botão para mostrar/esconder a palavra-passe ao escrevê-la." },
   { version: "1.4.0", notes: "Administradores, tutores (convite e aceitação), e gestão do plano de quem orientas." },
   { version: "1.3.0", notes: "Frase motivadora diária e aviso de nova versão instalada." },
@@ -11,7 +13,8 @@ export const CHANGELOG = [
   { version: "1.0.0", notes: "Primeira versão: plano alimentar com login próprio para cada pessoa." },
 ];
 
-export default function AboutTab() {
+export default function AboutTab({ limit }) {
+  const visible = CHANGELOG.slice(0, limit || CHANGELOG.length);
   return (
     <div>
       <div style={styles.planObsBox}>
@@ -30,7 +33,7 @@ export default function AboutTab() {
 
       <div style={styles.planObsBox}>
         <div style={styles.planObsTitle}>O que mudou</div>
-        {CHANGELOG.map(c => (
+        {visible.map(c => (
           <div key={c.version} style={{ marginBottom: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>Versão {c.version}</div>
             <div style={{ fontSize: 12.5, color: "#6b7268" }}>{c.notes}</div>

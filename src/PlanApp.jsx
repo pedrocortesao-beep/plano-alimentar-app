@@ -9,8 +9,20 @@ import ModulesTab from "./ModulesTab";
 import TutorTab from "./TutorTab";
 import AdminTab from "./AdminTab";
 import MoreMenu from "./MoreMenu";
+import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 import { getTodayPhrase } from "./dailyPhrase";
+
+function computeVisibleKeys(menuVisibility, isTutor) {
+  if (!menuVisibility) return null; // ainda a carregar: mostra tudo por omissão
+  const myGroups = new Set(["user"]);
+  if (isTutor) myGroups.add("tutor");
+  const visible = new Set();
+  Object.entries(menuVisibility).forEach(([itemKey, groups]) => {
+    if ((groups || []).some(g => myGroups.has(g))) visible.add(itemKey);
+  });
+  return visible;
+}
 
 function getCurrentMealId(meals) {
   const timed = meals.filter(m => m.meal_time);
@@ -41,6 +53,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [myRole, setMyRole] = useState("user");
   const [myModules, setMyModules] = useState(["plano_alimentar"]);
   const [tutees, setTutees] = useState([]);
+  const [appSettings, setAppSettings] = useState(null);
   const [profile, setProfile] = useState({ name: session.user.email, birth_date: null, sex: null, modules: ["plano_alimentar"] });
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +89,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       .then(({ data }) => { if (data) { setMyRole(data.role); setMyModules(data.modules || ["plano_alimentar"]); } });
     loadWaterSettings(userId).then(setWaterSettings);
     loadTutees();
+    supabase.from("app_settings").select("*").eq("id", true).maybeSingle()
+      .then(({ data }) => { if (data) setAppSettings(data); });
   }, []);
 
   async function loadTutees() {
@@ -294,7 +309,9 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           )}
           {waterSettings && (
             <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
-              onNavigate={setTab} isAdmin={myRole === "admin"} />
+              onNavigate={setTab} isAdmin={myRole === "admin"}
+              menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
+              menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)} />
           )}
           <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
             <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
@@ -331,7 +348,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             onUpdatePlanObs={updatePlanObs}
           />
         )}
-        {tab === "sobre" && <AboutTab />}
+        {tab === "sobre" && <AboutTab limit={appSettings?.changelog_limit} />}
         {tab === "partilhar" && <ShareTab />}
         {tab === "dados" && (
           <PersonalDataTab key={viewingUserId} userId={viewingUserId} profile={profile}
