@@ -536,55 +536,55 @@ function TodayView({ plan, meals, onSelectOption }) {
           const selected = meal.options.find(o => o.id === meal.selected_option_id) || meal.options[0];
           const isOpen = openMealId === meal.id;
           return (
-            <div key={meal.id} style={{ ...styles.timelineRow, borderTop: idx === 0 ? "none" : "1px solid #DEDAC8" }}>
-              {meal.meal_time && (
-                <div style={styles.timeCol}>
-                  <Clock size={12} color="#8A4B52" />
-                  <span style={styles.timeText}>{meal.meal_time}</span>
-                </div>
-              )}
-              <div style={styles.mealCol}>
+            <div key={meal.id} style={{ ...styles.timelineWrap, borderTop: idx === 0 ? "none" : "1px solid #DEDAC8" }}>
+              <div style={styles.timelineHeadRow}>
+                {meal.meal_time && (
+                  <div style={styles.timeCol}>
+                    <Clock size={12} color="#8A4B52" />
+                    <span style={styles.timeText}>{meal.meal_time}</span>
+                  </div>
+                )}
                 <button style={styles.mealHeadBtn} onClick={() => toggleMeal(meal.id)}>
                   <span style={styles.mealName}>{meal.name}</span>
                   <ChevronRight size={15} color="#6b7268" style={{ transform: isOpen ? "rotate(90deg)" : "none", transition: "transform .15s" }} />
                 </button>
-                {isOpen && (
-                  <div style={styles.mealBody}>
-                    {meal.options.length > 1 && (
-                      <div style={styles.optionChips}>
-                        {meal.options.map(o => (
-                          <button key={o.id} onClick={() => onSelectOption(meal.id, o.id)}
-                            style={{ ...styles.chip, ...(o.id === (selected && selected.id) ? styles.chipActive : {}) }}>
-                            {o.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    {selected && selected.ingredients.length > 0 ? (
-                      <ul style={styles.ingList}>
-                        {selected.ingredients.map(i => {
-                          const grams = approxGrams(i.qty, i.unit);
-                          const qtyLabel = i.qty ? `${i.qty} ${i.unit === "unidade" ? "Un" : (i.unit || "")}`.trim() : "";
-                          return (
-                            <li key={i.id} style={styles.ingItem}>
-                              {qtyLabel && <span style={styles.ingQty}>{qtyLabel}</span>}
-                              <span>
-                                {i.name}{i.notes ? ` — ${i.notes}` : ""}
-                                {grams && <span style={styles.approxGrams}> (≈ {grams} g)</span>}
-                              </span>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    ) : (
-                      <p style={styles.emptyMeal}>Sem ingredientes definidos ainda.</p>
-                    )}
-                    {selected && <MacroSummary ingredients={selected.ingredients} />}
-                    {meal.observations && <p style={styles.mealObs}>{meal.observations}</p>}
-                    {selected && selected.observations && <p style={styles.mealObs}>{selected.observations}</p>}
-                  </div>
-                )}
               </div>
+              {isOpen && (
+                <div style={styles.mealBody}>
+                  {meal.options.length > 1 && (
+                    <div style={styles.optionChips}>
+                      {meal.options.map(o => (
+                        <button key={o.id} onClick={() => onSelectOption(meal.id, o.id)}
+                          style={{ ...styles.chip, ...(o.id === (selected && selected.id) ? styles.chipActive : {}) }}>
+                          {o.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selected && selected.ingredients.length > 0 ? (
+                    <ul style={styles.ingList}>
+                      {selected.ingredients.map(i => {
+                        const grams = approxGrams(i.qty, i.unit);
+                        const qtyLabel = i.qty ? `${i.qty} ${i.unit === "unidade" ? "Un" : (i.unit || "")}`.trim() : "";
+                        return (
+                          <li key={i.id} style={styles.ingItem}>
+                            {qtyLabel && <span style={styles.ingQty}>{qtyLabel}</span>}
+                            <span>
+                              {i.name}{i.notes ? ` — ${i.notes}` : ""}
+                              {grams && <span style={styles.approxGrams}> (≈ {grams} g)</span>}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p style={styles.emptyMeal}>Sem ingredientes definidos ainda.</p>
+                  )}
+                  {selected && <MacroSummary ingredients={selected.ingredients} />}
+                  {meal.observations && <p style={styles.mealObs}>{meal.observations}</p>}
+                  {selected && selected.observations && <p style={styles.mealObs}>{selected.observations}</p>}
+                </div>
+              )}
             </div>
           );
         })}

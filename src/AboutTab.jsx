@@ -1,8 +1,10 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.9.1";
+export const APP_VERSION = "1.9.3";
 
 export const CHANGELOG = [
+  { version: "1.9.3", notes: "Reestruturado o ecrã Hoje: ingredientes e macros usam agora a largura toda, sem ficarem encostados à coluna da hora." },
+  { version: "1.9.2", notes: "Quantidade dos ingredientes já não parte para duas linhas, e ficou mais destacada (negrito)." },
   { version: "1.9.1", notes: "Corrigido o espaço vazio à esquerda quando uma refeição está expandida — a coluna da hora deixou de esticar até ao fundo." },
   { version: "1.9.0", notes: "Hora de volta ao tamanho original; quantidades e macros mais encostadas à esquerda quando expandes uma refeição." },
   { version: "1.8.9", notes: "Mais espaço aproveitado no ecrã Hoje: colunas da hora e das quantidades mais estreitas." },
