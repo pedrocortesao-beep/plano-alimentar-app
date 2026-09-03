@@ -6,6 +6,8 @@ import AboutTab, { APP_VERSION, CHANGELOG } from "./AboutTab";
 import ShareTab from "./ShareTab";
 import PersonalDataTab from "./PersonalDataTab";
 import ModulesTab from "./ModulesTab";
+import TutorTab from "./TutorTab";
+import AdminTab from "./AdminTab";
 import MoreMenu from "./MoreMenu";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 import { getTodayPhrase } from "./dailyPhrase";
@@ -35,6 +37,10 @@ function useDebouncedSave(delay = 600) {
 
 export default function PlanApp({ session, installPrompt, onInstall }) {
   const userId = session.user.id;
+  const [viewingUserId, setViewingUserId] = useState(userId);
+  const [myRole, setMyRole] = useState("user");
+  const [myModules, setMyModules] = useState(["plano_alimentar"]);
+  const [tutees, setTutees] = useState([]);
   const [profile, setProfile] = useState({ name: session.user.email, birth_date: null, sex: null, modules: ["plano_alimentar"] });
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,16 +69,34 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     setUpdateNotice(null);
   };
 
-  useEffect(() => { load(); }, []);
+  // Dados da própria conta (papel, tutelados, água) — carregam uma vez, não
+  // mudam quando trocas de quem estás a gerir.
+  useEffect(() => {
+    supabase.from("profiles").select("role, modules").eq("id", userId).maybeSingle()
+      .then(({ data }) => { if (data) { setMyRole(data.role); setMyModules(data.modules || ["plano_alimentar"]); } });
+    loadWaterSettings(userId).then(setWaterSettings);
+    loadTutees();
+  }, []);
 
-  async function load() {
+  async function loadTutees() {
+    const { data } = await supabase
+      .from("tutor_relationships")
+      .select("user_id, profiles!user_id(name)")
+      .eq("tutor_id", userId)
+      .eq("status", "accepted");
+    setTutees((data || []).map(r => ({ id: r.user_id, name: r.profiles?.name || "…" })));
+  }
+
+  // Dados da pessoa que estás a gerir (tu próprio, ou um tutelado) — recarrega
+  // sempre que mudas o seletor "A gerir".
+  useEffect(() => { loadTarget(viewingUserId); }, [viewingUserId]);
+
+  async function loadTarget(targetId) {
     setLoading(true);
     try {
       const { data: profileRow } = await supabase
-        .from("profiles").select("name, birth_date, sex, modules").eq("id", userId).maybeSingle();
+        .from("profiles").select("name, birth_date, sex, modules").eq("id", targetId).maybeSingle();
       if (profileRow) setProfile(profileRow);
-
-      loadWaterSettings(userId).then(setWaterSettings);
 
       let { data: planRow, error } = await supabase
         .from("plans")
@@ -84,7 +108,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             )
           )
         `)
-        .eq("user_id", userId)
+        .eq("user_id", targetId)
         .order("position", { referencedTable: "meals" })
         .maybeSingle();
 
@@ -92,7 +116,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
       if (!planRow) {
         const { data: created, error: createErr } = await supabase
-          .from("plans").insert({ user_id: userId, observations: "" }).select().single();
+          .from("plans").insert({ user_id: targetId, observations: "" }).select().single();
         if (createErr) throw createErr;
         planRow = { ...created, meals: [] };
       }
@@ -116,11 +140,11 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const addMeal = async () => {
     const position = plan.meals.length ? Math.max(...plan.meals.map(m => m.position)) + 1 : 0;
     const { data: meal, error } = await supabase.from("meals")
-      .insert({ plan_id: plan.id, user_id: userId, name: "Nova refeição", meal_time: null, position, observations: "" })
+      .insert({ plan_id: plan.id, user_id: viewingUserId, name: "Nova refeição", meal_time: null, position, observations: "" })
       .select().single();
     if (error) { setSaveError(true); return; }
     const { data: option, error: optErr } = await supabase.from("options")
-      .insert({ meal_id: meal.id, user_id: userId, name: "Opção 1", observations: "" })
+      .insert({ meal_id: meal.id, user_id: viewingUserId, name: "Opção 1", observations: "" })
       .select().single();
     if (optErr) { setSaveError(true); return; }
     const fullMeal = { ...meal, options: [{ ...option, ingredients: [] }] };
@@ -165,7 +189,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     const meal = plan.meals.find(m => m.id === mealId);
     const n = meal.options.length + 1;
     const { data: option, error } = await supabase.from("options")
-      .insert({ meal_id: mealId, user_id: userId, name: `Opção ${n}`, observations: "" })
+      .insert({ meal_id: mealId, user_id: viewingUserId, name: `Opção ${n}`, observations: "" })
       .select().single();
     if (error) { setSaveError(true); return; }
     setPlan(p => ({ ...p, meals: p.meals.map(m => m.id !== mealId ? m : { ...m, options: [...m.options, { ...option, ingredients: [] }] }) }));
@@ -197,7 +221,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   // ---- Ingredientes ----
   const addIngredient = async (mealId, optionId) => {
     const { data: ing, error } = await supabase.from("ingredients")
-      .insert({ option_id: optionId, user_id: userId, name: "", qty: "", unit: "g", notes: "" })
+      .insert({ option_id: optionId, user_id: viewingUserId, name: "", qty: "", unit: "g", notes: "" })
       .select().single();
     if (error) { setSaveError(true); return; }
     setPlan(p => ({ ...p, meals: p.meals.map(m => m.id !== mealId ? m : { ...m, options: m.options.map(o => o.id !== optionId ? o : { ...o, ingredients: [...o.ingredients, ing] }) }) }));
@@ -253,7 +277,14 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       <header style={styles.header}>
         <div>
           <div style={styles.eyebrow}>ActiveLife</div>
-          <h1 style={styles.h1}>Olá, {profile.name}</h1>
+          {tutees.length > 0 ? (
+            <select style={styles.viewingSelect} value={viewingUserId} onChange={e => setViewingUserId(e.target.value)}>
+              <option value={userId}>A gerir: Eu</option>
+              {tutees.map(t => <option key={t.id} value={t.id}>A gerir: {t.name}</option>)}
+            </select>
+          ) : (
+            <h1 style={styles.h1}>Olá, {profile.name}</h1>
+          )}
         </div>
         <div style={styles.rowGap}>
           {installPrompt && (
@@ -262,7 +293,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             </button>
           )}
           {waterSettings && (
-            <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings} onNavigate={setTab} />
+            <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
+              onNavigate={setTab} isAdmin={myRole === "admin"} />
           )}
           <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
             <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
@@ -302,13 +334,16 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         {tab === "sobre" && <AboutTab />}
         {tab === "partilhar" && <ShareTab />}
         {tab === "dados" && (
-          <PersonalDataTab userId={userId} profile={profile}
+          <PersonalDataTab key={viewingUserId} userId={viewingUserId} profile={profile}
+            canChangePassword={viewingUserId === userId}
             onSaved={(fields) => setProfile(p => ({ ...p, ...fields }))} />
         )}
         {tab === "modulos" && (
-          <ModulesTab userId={userId} modules={profile.modules}
-            onSaved={(modules) => setProfile(p => ({ ...p, modules }))} />
+          <ModulesTab userId={userId} modules={myModules}
+            onSaved={setMyModules} />
         )}
+        {tab === "tutores" && <TutorTab userId={userId} />}
+        {tab === "admin" && myRole === "admin" && <AdminTab userId={userId} />}
       </main>
     </div>
   );

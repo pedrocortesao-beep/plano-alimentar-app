@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
 
-export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate }) {
+export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | "water" | "feedback"
 
@@ -41,6 +41,14 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
             <button style={menuStyles.item} onClick={() => go("modulos")}>
               <LayoutGrid size={15} /> Módulos
             </button>
+            <button style={menuStyles.item} onClick={() => go("tutores")}>
+              <Users size={15} /> Tutores
+            </button>
+            {isAdmin && (
+              <button style={menuStyles.item} onClick={() => go("admin")}>
+                <ShieldCheck size={15} /> Administração
+              </button>
+            )}
             <button style={menuStyles.item} onClick={() => go("sobre")}>
               <Info size={15} /> Sobre a app
             </button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport } from "./styles";
 
@@ -122,10 +123,21 @@ export default function AuthScreens({ installPrompt, onInstall }) {
 }
 
 function Field({ label, type, value, onChange, ...rest }) {
+  const [show, setShow] = useState(false);
+  const isPassword = type === "password";
   return (
     <div style={styles.field}>
       <label style={styles.label}>{label}</label>
-      <input style={styles.input} type={type} value={value} onChange={e => onChange(e.target.value)} {...rest} />
+      <div style={{ position: "relative" }}>
+        <input style={isPassword ? { ...styles.input, paddingRight: 36 } : styles.input}
+          type={isPassword ? (show ? "text" : "password") : type}
+          value={value} onChange={e => onChange(e.target.value)} {...rest} />
+        {isPassword && (
+          <button type="button" onClick={() => setShow(s => !s)} style={styles.passwordToggle} tabIndex={-1}>
+            {show ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

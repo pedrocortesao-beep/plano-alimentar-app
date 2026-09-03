@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Eye, EyeOff } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 
@@ -10,7 +10,7 @@ const SEX_OPTIONS = [
   { value: "outro", label: "Outro" },
 ];
 
-export default function PersonalDataTab({ userId, profile, onSaved }) {
+export default function PersonalDataTab({ userId, profile, canChangePassword, onSaved }) {
   const [name, setName] = useState(profile.name || "");
   const [birthDate, setBirthDate] = useState(profile.birth_date || "");
   const [sex, setSex] = useState(profile.sex || "");
@@ -18,6 +18,7 @@ export default function PersonalDataTab({ userId, profile, onSaved }) {
   const [saved, setSaved] = useState(false);
 
   const [newPassword, setNewPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [pwSaving, setPwSaving] = useState(false);
   const [pwMessage, setPwMessage] = useState(null);
   const [pwError, setPwError] = useState(null);
@@ -66,18 +67,26 @@ export default function PersonalDataTab({ userId, profile, onSaved }) {
         </button>
       </div>
 
-      <div style={styles.planObsBox}>
-        <div style={styles.planObsTitle}>Alterar palavra-passe</div>
-        <div style={styles.field}>
-          <label style={styles.label}>Palavra-passe nova</label>
-          <input style={styles.input} type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={6} />
+      {canChangePassword && (
+        <div style={styles.planObsBox}>
+          <div style={styles.planObsTitle}>Alterar palavra-passe</div>
+          <div style={styles.field}>
+            <label style={styles.label}>Palavra-passe nova</label>
+            <div style={{ position: "relative" }}>
+              <input style={{ ...styles.input, paddingRight: 36 }} type={showPw ? "text" : "password"}
+                value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={6} />
+              <button type="button" onClick={() => setShowPw(s => !s)} style={styles.passwordToggle} tabIndex={-1}>
+                {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+          </div>
+          {pwError && <p style={styles.errorText}>{pwError}</p>}
+          {pwMessage && <p style={styles.messageText}>{pwMessage}</p>}
+          <button style={styles.smallBtnPrimary} onClick={changePassword} disabled={pwSaving || !newPassword}>
+            {pwSaving ? "A alterar…" : "Alterar palavra-passe"}
+          </button>
         </div>
-        {pwError && <p style={styles.errorText}>{pwError}</p>}
-        {pwMessage && <p style={styles.messageText}>{pwMessage}</p>}
-        <button style={styles.smallBtnPrimary} onClick={changePassword} disabled={pwSaving || !newPassword}>
-          {pwSaving ? "A alterar…" : "Alterar palavra-passe"}
-        </button>
-      </div>
+      )}
     </div>
   );
 }

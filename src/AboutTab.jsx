@@ -1,8 +1,10 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.1";
 
 export const CHANGELOG = [
+  { version: "1.4.1", notes: "Botão para mostrar/esconder a palavra-passe ao escrevê-la." },
+  { version: "1.4.0", notes: "Administradores, tutores (convite e aceitação), e gestão do plano de quem orientas." },
   { version: "1.3.0", notes: "Frase motivadora diária e aviso de nova versão instalada." },
   { version: "1.2.0", notes: "Nome ActiveLife, dados pessoais, e seleção de módulos." },
   { version: "1.1.0", notes: "Sobre, partilhar, lembrete de água, bloqueio do plano, e sugestões." },
