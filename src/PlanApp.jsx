@@ -162,7 +162,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           id, observations, locked,
           meals ( id, name, meal_time, position, observations, selected_option_id,
             options!meal_id ( id, name, observations,
-              ingredients ( id, name, qty, unit, notes )
+              ingredients ( id, name, qty, unit, notes, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, grams_per_unit )
             )
           )
         `)
