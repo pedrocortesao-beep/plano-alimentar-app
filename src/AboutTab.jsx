@@ -1,8 +1,10 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.6.3";
+export const APP_VERSION = "1.7.1";
 
 export const CHANGELOG = [
+  { version: "1.7.1", notes: "Sugestões automáticas de valores nutricionais para ingredientes comuns (aveia, banana, frango, ...)." },
+  { version: "1.7.0", notes: "Valores nutricionais por ingrediente e soma automática de calorias/macros por opção." },
   { version: "1.6.3", notes: "Correção no ecrã Hoje: sem quantidade, a unidade não aparece; unidades \"unidade\" mostram \"Un\"." },
   { version: "1.6.2", notes: "Unidade nunca fica em branco, e mostra equivalência aproximada em gramas (ml, colher, chávena...)." },
   { version: "1.6.1", notes: "Correção: agora dá para mover qualquer item (incluindo os originais) para dentro de um submenu." },

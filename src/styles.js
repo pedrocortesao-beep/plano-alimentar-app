@@ -47,6 +47,8 @@ export const styles = {
   ingList: { margin: 0, padding: 0, listStyle: "none" },
   ingItem: { display: "flex", gap: 8, fontSize: 14, color: "#3c463f", padding: "3px 0" },
   approxGrams: { color: "#a3a08f", fontSize: 12.5, fontStyle: "italic" },
+  macroSummary: { display: "flex", flexWrap: "wrap", gap: 10, fontSize: 12.5, color: "#4B6350", background: "#EAF0EA", borderRadius: 6, padding: "6px 10px", marginTop: 8 },
+  macroIncomplete: { color: "#a3a08f", fontStyle: "italic", fontSize: 11.5 },
   ingQty: { minWidth: 62, color: "#6b7268", fontWeight: 600, fontSize: 13 },
   emptyMeal: { fontSize: 13, color: "#a3a08f", fontStyle: "italic", margin: 0 },
   mealObs: { fontSize: 12.5, color: "#8A4B52", marginTop: 6, marginBottom: 0 },
@@ -77,6 +79,10 @@ export const styles = {
   ingQtyInput: { width: 54, border: "1px solid #E4E1D2", borderRadius: 6, padding: "6px 6px", fontSize: 12.5, background: "#fff" },
   ingUnitInput: { border: "1px solid #E4E1D2", borderRadius: 6, padding: "6px 4px", fontSize: 12.5, background: "#fff" },
   addIngBtn: { display: "flex", alignItems: "center", gap: 5, alignSelf: "flex-start", background: "transparent", border: "none", color: "#4B6350", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "4px 0" },
+  nutritionBox: { background: "#fff", border: "1px solid #E4E1D2", borderRadius: 6, padding: 8, marginBottom: 6 },
+  nutritionGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 },
+  nutritionField: { fontSize: 11, color: "#6b7268", fontWeight: 600, display: "flex", flexDirection: "column", gap: 3 },
+  suggestionBtn: { display: "block", width: "100%", textAlign: "left", background: "#FBF3E4", border: "1px solid #E8CFA0", color: "#8A6A2E", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", marginBottom: 8, lineHeight: 1.4 },
   addOptionBtn: { display: "flex", alignItems: "center", gap: 5, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", background: "transparent", cursor: "pointer" },
 };
 

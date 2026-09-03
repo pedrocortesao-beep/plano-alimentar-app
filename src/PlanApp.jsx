@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock, Flame } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport, UNITS } from "./styles";
 import AboutTab, { APP_VERSION, CHANGELOG } from "./AboutTab";
@@ -12,7 +12,8 @@ import MoreMenu from "./MoreMenu";
 import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 import { getTodayPhrase } from "./dailyPhrase";
-import { approxGrams } from "./unitConversions";
+import { approxGrams, computeMacros } from "./unitConversions";
+import { suggestNutrition } from "./foodDatabase";
 
 function computeVisibleKeys(menuVisibility, isTutor) {
   if (!menuVisibility) return null; // ainda a carregar: mostra tudo por omissão
@@ -367,6 +368,20 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   );
 }
 
+function MacroSummary({ ingredients }) {
+  const macros = computeMacros(ingredients);
+  if (!macros) return null;
+  return (
+    <div style={styles.macroSummary}>
+      <span><strong>{macros.kcal}</strong> kcal</span>
+      <span><strong>{macros.protein}g</strong> proteína</span>
+      <span><strong>{macros.carbs}g</strong> hidratos</span>
+      <span><strong>{macros.fat}g</strong> gordura</span>
+      {macros.incomplete && <span style={styles.macroIncomplete}>(alguns ingredientes sem dados nutricionais)</span>}
+    </div>
+  );
+}
+
 function TodayView({ plan, meals, onSelectOption }) {
   const [pinnedId, setPinnedId] = useState(null);
   const [tick, setTick] = useState(0);
@@ -439,6 +454,7 @@ function TodayView({ plan, meals, onSelectOption }) {
                     ) : (
                       <p style={styles.emptyMeal}>Sem ingredientes definidos ainda.</p>
                     )}
+                    {selected && <MacroSummary ingredients={selected.ingredients} />}
                     {meal.observations && <p style={styles.mealObs}>{meal.observations}</p>}
                     {selected && selected.observations && <p style={styles.mealObs}>{selected.observations}</p>}
                   </div>
@@ -553,6 +569,8 @@ function MealEditor({ meal, isFirst, isLast, expanded, onToggle, expandedOption,
 
 function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
+  const [nutritionOpenId, setNutritionOpenId] = useState(null);
+
   return (
     <div style={styles.optionBox}>
       <div style={styles.optionHead}>
@@ -566,16 +584,71 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
       {expanded && (
         <div style={styles.optionBody}>
           {option.ingredients.map(ing => (
-            <div key={ing.id} style={styles.ingRow}>
-              <input style={styles.ingNameInput} placeholder="Ingrediente" value={ing.name} onChange={e => onUpdateIngredient(ing.id, { name: e.target.value })} />
-              <input style={styles.ingQtyInput} placeholder="Qtd" value={ing.qty} onChange={e => onUpdateIngredient(ing.id, { qty: e.target.value })} />
-              <select style={styles.ingUnitInput} value={ing.unit || "g"} onChange={e => onUpdateIngredient(ing.id, { unit: e.target.value })}>
-                {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <button style={{ ...styles.iconBtn, color: "#8A4B52" }} onClick={() => onDeleteIngredient(ing.id)}><Trash2 size={12} /></button>
+            <div key={ing.id}>
+              <div style={styles.ingRow}>
+                <input style={styles.ingNameInput} placeholder="Ingrediente" value={ing.name} onChange={e => onUpdateIngredient(ing.id, { name: e.target.value })} />
+                <input style={styles.ingQtyInput} placeholder="Qtd" value={ing.qty} onChange={e => onUpdateIngredient(ing.id, { qty: e.target.value })} />
+                <select style={styles.ingUnitInput} value={ing.unit || "g"} onChange={e => onUpdateIngredient(ing.id, { unit: e.target.value })}>
+                  {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <button style={styles.iconBtn}
+                  onClick={() => setNutritionOpenId(nutritionOpenId === ing.id ? null : ing.id)}
+                  title="Valores nutricionais">
+                  <Flame size={13} color={ing.kcal_per_100 != null ? "#C98A3D" : (suggestNutrition(ing.name) ? "#E8CFA0" : "#a3a08f")} />
+                </button>
+                <button style={{ ...styles.iconBtn, color: "#8A4B52" }} onClick={() => onDeleteIngredient(ing.id)}><Trash2 size={12} /></button>
+              </div>
+              {nutritionOpenId === ing.id && (
+                <div style={styles.nutritionBox}>
+                  <p style={{ ...styles.emptyMeal, marginBottom: 6 }}>Valores por 100 g/ml:</p>
+                  {ing.kcal_per_100 == null && (() => {
+                    const suggestion = suggestNutrition(ing.name);
+                    if (!suggestion) return null;
+                    return (
+                      <button style={styles.suggestionBtn} onClick={() => onUpdateIngredient(ing.id, {
+                        kcal_per_100: suggestion.kcal, protein_per_100: suggestion.protein,
+                        carbs_per_100: suggestion.carbs, fat_per_100: suggestion.fat,
+                        ...(ing.unit === "unidade" && suggestion.gramsPerUnit ? { grams_per_unit: suggestion.gramsPerUnit } : {}),
+                      })}>
+                        <Flame size={13} /> Usar sugestão: {suggestion.kcal} kcal, {suggestion.protein}g prot., {suggestion.carbs}g hid., {suggestion.fat}g gord. (por 100g)
+                      </button>
+                    );
+                  })()}
+                  <div style={styles.nutritionGrid}>
+                    <label style={styles.nutritionField}>
+                      kcal
+                      <input style={styles.input} type="number" min="0" value={ing.kcal_per_100 ?? ""}
+                        onChange={e => onUpdateIngredient(ing.id, { kcal_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                    </label>
+                    <label style={styles.nutritionField}>
+                      Proteína (g)
+                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.protein_per_100 ?? ""}
+                        onChange={e => onUpdateIngredient(ing.id, { protein_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                    </label>
+                    <label style={styles.nutritionField}>
+                      Hidratos (g)
+                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.carbs_per_100 ?? ""}
+                        onChange={e => onUpdateIngredient(ing.id, { carbs_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                    </label>
+                    <label style={styles.nutritionField}>
+                      Gordura (g)
+                      <input style={styles.input} type="number" min="0" step="0.1" value={ing.fat_per_100 ?? ""}
+                        onChange={e => onUpdateIngredient(ing.id, { fat_per_100: e.target.value === "" ? null : Number(e.target.value) })} />
+                    </label>
+                    {ing.unit === "unidade" && (
+                      <label style={styles.nutritionField}>
+                        Peso aprox. por unidade (g)
+                        <input style={styles.input} type="number" min="0" value={ing.grams_per_unit ?? ""}
+                          onChange={e => onUpdateIngredient(ing.id, { grams_per_unit: e.target.value === "" ? null : Number(e.target.value) })} />
+                      </label>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
           <button style={styles.addIngBtn} onClick={onAddIngredient}><Plus size={12} /> Adicionar ingrediente</button>
+          <MacroSummary ingredients={option.ingredients} />
           <input style={styles.obsInput} placeholder="Observações da opção (opcional)" value={option.observations} onChange={e => onUpdateOption({ observations: e.target.value })} />
         </div>
       )}
