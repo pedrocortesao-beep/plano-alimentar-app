@@ -1,8 +1,9 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.8.5";
+export const APP_VERSION = "1.8.6";
 
 export const CHANGELOG = [
+  { version: "1.8.6", notes: "Grava de imediato ao sair, mudar de separador, ou fazer logout — evita perder alterações escritas mesmo antes dos ~600ms de espera normal." },
   { version: "1.8.5", notes: "Corrigida perda de dados ao editar vários campos nutricionais seguidos; correspondência de nomes de alimentos mais inteligente (por palavras em comum)." },
   { version: "1.8.4", notes: "Preencher valores nutricionais à mão propaga automaticamente para ingredientes com o mesmo nome no resto do plano." },
   { version: "1.8.3", notes: "Sugestões nutricionais aplicam-se automaticamente a todos os ingredientes já existentes, sem precisar de abrir cada opção." },

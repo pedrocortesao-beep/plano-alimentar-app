@@ -42,19 +42,32 @@ function getCurrentMealId(meals) {
 // Atrasa a escrita na base de dados (para não disparar um pedido por cada tecla),
 // mas o estado local (o que vês no ecrã) atualiza-se sempre de imediato.
 // Junta todas as alterações feitas dentro da janela de espera, para não
-// perder campos anteriores quando editas vários seguidos rapidamente.
+// perder campos anteriores quando editas vários seguidos rapidamente, e
+// permite forçar a gravação imediata (ex.: quando sais da app).
 function useDebouncedSave(delay = 600) {
   const timers = useRef({});
-  const pending = useRef({});
-  return useCallback((key, fields, saveFn) => {
-    pending.current[key] = { ...(pending.current[key] || {}), ...fields };
+  const pending = useRef({}); // key -> { fields, saveFn }
+
+  const runNow = useCallback((key) => {
+    const entry = pending.current[key];
+    if (!entry) return;
+    delete pending.current[key];
+    if (timers.current[key]) { clearTimeout(timers.current[key]); delete timers.current[key]; }
+    entry.saveFn(entry.fields);
+  }, []);
+
+  const schedule = useCallback((key, fields, saveFn) => {
+    const existing = pending.current[key];
+    pending.current[key] = { fields: { ...(existing?.fields || {}), ...fields }, saveFn };
     if (timers.current[key]) clearTimeout(timers.current[key]);
-    timers.current[key] = setTimeout(async () => {
-      const toSave = pending.current[key];
-      delete pending.current[key];
-      await saveFn(toSave);
-    }, delay);
-  }, [delay]);
+    timers.current[key] = setTimeout(() => runNow(key), delay);
+  }, [delay, runNow]);
+
+  const flushAll = useCallback(() => {
+    Object.keys(pending.current).forEach(runNow);
+  }, [runNow]);
+
+  return { schedule, flushAll };
 }
 
 export default function PlanApp({ session, installPrompt, onInstall }) {
@@ -74,10 +87,27 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [saveError, setSaveError] = useState(false);
   const [waterSettings, setWaterSettings] = useState(null);
   const [updateNotice, setUpdateNotice] = useState(null);
-  const scheduleSave = useDebouncedSave();
+  const { schedule: scheduleSave, flushAll } = useDebouncedSave();
   const autoFilledForRef = useRef(null);
 
   useWaterReminder(waterSettings);
+
+  // Grava imediatamente qualquer alteração pendente sempre que a app é posta
+  // em segundo plano, ou a página está prestes a fechar/recarregar — sem
+  // isto, uma saída rápida a seguir a escrever podia perder a gravação.
+  useEffect(() => {
+    const onHide = () => { if (document.hidden) flushAll(); };
+    window.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushAll);
+    window.addEventListener("beforeunload", flushAll);
+    return () => {
+      window.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushAll);
+      window.removeEventListener("beforeunload", flushAll);
+    };
+  }, [flushAll]);
+
+  const changeTab = (t) => { flushAll(); setTab(t); };
 
   useEffect(() => {
     const seen = localStorage.getItem("activelife_seen_version");
@@ -361,11 +391,11 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           )}
           {waterSettings && (
             <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
-              onNavigate={setTab} isAdmin={myRole === "admin"}
+              onNavigate={changeTab} isAdmin={myRole === "admin"}
               menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
               menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)} />
           )}
-          <button style={styles.logoutBtn} onClick={() => supabase.auth.signOut()}>
+          <button style={styles.logoutBtn} onClick={() => { flushAll(); supabase.auth.signOut(); }}>
             <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
           </button>
         </div>
@@ -382,7 +412,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
       <main style={styles.main}>
         {tab !== "hoje" && (
-          <button style={styles.backLink} onClick={() => setTab("hoje")}>
+          <button style={styles.backLink} onClick={() => changeTab("hoje")}>
             <ChevronRight size={14} style={{ transform: "rotate(180deg)" }} /> Hoje
           </button>
         )}
