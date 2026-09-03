@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2 } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
@@ -34,6 +34,12 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
             </button>
             <button style={menuStyles.item} onClick={() => setPanel("feedback")}>
               <MessageSquarePlus size={15} /> Sugerir melhorias
+            </button>
+            <button style={menuStyles.item} onClick={() => go("dados")}>
+              <UserCircle size={15} /> Dados pessoais
+            </button>
+            <button style={menuStyles.item} onClick={() => go("modulos")}>
+              <LayoutGrid size={15} /> Módulos
             </button>
             <button style={menuStyles.item} onClick={() => go("sobre")}>
               <Info size={15} /> Sobre a app

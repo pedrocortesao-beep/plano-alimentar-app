@@ -59,7 +59,7 @@ export default function AuthScreens({ installPrompt, onInstall }) {
     <div style={styles.authPage}>
       <style>{`${fontImport} * { box-sizing: border-box; } ::placeholder { color: #a3a08f; }`}</style>
       <div style={styles.authCard}>
-        <div style={styles.authEyebrow}>Plano Alimentar</div>
+        <div style={styles.authEyebrow}>ActiveLife</div>
         {installPrompt && (
           <button style={{ ...styles.primaryBtn, marginTop: -6, marginBottom: 16, background: "#C98A3D" }} onClick={onInstall}>
             Instalar app no telemóvel

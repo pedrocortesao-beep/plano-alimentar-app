@@ -24,8 +24,8 @@ export default function ShareTab() {
     }
   };
 
-  const mailtoHref = `mailto:?subject=${encodeURIComponent("Plano Alimentar — link da app")}&body=${encodeURIComponent(
-    `Olá! Aqui está o link da app do Plano Alimentar:\n\n${link}\n\nCria a tua conta para começares a usar.`
+  const mailtoHref = `mailto:?subject=${encodeURIComponent("ActiveLife — link da app")}&body=${encodeURIComponent(
+    `Olá! Aqui está o link da app ActiveLife:\n\n${link}\n\nCria a tua conta para começares a usar.`
   )}`;
 
   return (

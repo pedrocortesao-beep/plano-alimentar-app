@@ -2,10 +2,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport, UNITS } from "./styles";
-import AboutTab from "./AboutTab";
+import AboutTab, { APP_VERSION, CHANGELOG } from "./AboutTab";
 import ShareTab from "./ShareTab";
+import PersonalDataTab from "./PersonalDataTab";
+import ModulesTab from "./ModulesTab";
 import MoreMenu from "./MoreMenu";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
+import { getTodayPhrase } from "./dailyPhrase";
 
 function getCurrentMealId(meals) {
   const timed = meals.filter(m => m.meal_time);
@@ -32,19 +35,33 @@ function useDebouncedSave(delay = 600) {
 
 export default function PlanApp({ session, installPrompt, onInstall }) {
   const userId = session.user.id;
-  const [profileName, setProfileName] = useState(session.user.email);
+  const [profile, setProfile] = useState({ name: session.user.email, birth_date: null, sex: null, modules: ["plano_alimentar"] });
   const [plan, setPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState("hoje");
   const [expandedMeal, setExpandedMeal] = useState(null);
   const [expandedOption, setExpandedOption] = useState(null);
   const [saveError, setSaveError] = useState(false);
-  const [renamingProfile, setRenamingProfile] = useState(false);
-  const [renameDraft, setRenameDraft] = useState("");
   const [waterSettings, setWaterSettings] = useState(null);
+  const [updateNotice, setUpdateNotice] = useState(null);
   const scheduleSave = useDebouncedSave();
 
   useWaterReminder(waterSettings);
+
+  useEffect(() => {
+    const seen = localStorage.getItem("activelife_seen_version");
+    if (seen === null) {
+      localStorage.setItem("activelife_seen_version", APP_VERSION);
+    } else if (seen !== APP_VERSION) {
+      const entry = CHANGELOG.find(c => c.version === APP_VERSION);
+      setUpdateNotice(entry || { version: APP_VERSION, notes: "Novas melhorias disponíveis." });
+    }
+  }, []);
+
+  const dismissUpdateNotice = () => {
+    localStorage.setItem("activelife_seen_version", APP_VERSION);
+    setUpdateNotice(null);
+  };
 
   useEffect(() => { load(); }, []);
 
@@ -52,8 +69,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     setLoading(true);
     try {
       const { data: profileRow } = await supabase
-        .from("profiles").select("name").eq("id", userId).maybeSingle();
-      if (profileRow?.name) setProfileName(profileRow.name);
+        .from("profiles").select("name, birth_date, sex, modules").eq("id", userId).maybeSingle();
+      if (profileRow) setProfile(profileRow);
 
       loadWaterSettings(userId).then(setWaterSettings);
 
@@ -87,14 +104,6 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     }
     setLoading(false);
   }
-
-  const renameProfile = async (newName) => {
-    const name = newName.trim();
-    if (!name) return;
-    setProfileName(name);
-    const { error } = await supabase.from("profiles").update({ name }).eq("id", userId);
-    if (error) setSaveError(true);
-  };
 
   const toggleLock = async () => {
     const locked = !plan.locked;
@@ -243,23 +252,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
       <header style={styles.header}>
         <div>
-          <div style={styles.eyebrow}>Plano Alimentar</div>
-          {renamingProfile ? (
-            <div style={styles.rowGap}>
-              <input autoFocus style={styles.renameInput} value={renameDraft}
-                onChange={e => setRenameDraft(e.target.value)}
-                onKeyDown={e => { if (e.key === "Enter") { renameProfile(renameDraft); setRenamingProfile(false); } }} />
-              <button style={styles.iconBtn} onClick={() => { renameProfile(renameDraft); setRenamingProfile(false); }}><Check size={15} /></button>
-              <button style={styles.iconBtn} onClick={() => setRenamingProfile(false)}><X size={15} /></button>
-            </div>
-          ) : (
-            <h1 style={styles.h1}>
-              Olá, {profileName}
-              <button style={styles.renameIconBtn} onClick={() => { setRenameDraft(profileName); setRenamingProfile(true); }}>
-                <Pencil size={13} />
-              </button>
-            </h1>
-          )}
+          <div style={styles.eyebrow}>ActiveLife</div>
+          <h1 style={styles.h1}>Olá, {profile.name}</h1>
         </div>
         <div style={styles.rowGap}>
           {installPrompt && (
@@ -276,6 +270,12 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         </div>
       </header>
 
+      {updateNotice && (
+        <div style={styles.updateBanner}>
+          <span>✨ Atualizado para a versão {updateNotice.version}: {updateNotice.notes}</span>
+          <button style={styles.iconBtn} onClick={dismissUpdateNotice}><X size={15} /></button>
+        </div>
+      )}
 
       {saveError && <div style={styles.errorBanner}>Houve um problema a guardar a última alteração. Verifica a ligação e tenta de novo.</div>}
 
@@ -301,6 +301,14 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         )}
         {tab === "sobre" && <AboutTab />}
         {tab === "partilhar" && <ShareTab />}
+        {tab === "dados" && (
+          <PersonalDataTab userId={userId} profile={profile}
+            onSaved={(fields) => setProfile(p => ({ ...p, ...fields }))} />
+        )}
+        {tab === "modulos" && (
+          <ModulesTab userId={userId} modules={profile.modules}
+            onSaved={(modules) => setProfile(p => ({ ...p, modules }))} />
+        )}
       </main>
     </div>
   );
@@ -321,6 +329,10 @@ function TodayView({ plan, meals, onSelectOption }) {
 
   return (
     <div>
+      <div style={styles.phraseCard}>
+        <p style={styles.phraseText}>"{getTodayPhrase()}"</p>
+      </div>
+
       <div style={styles.timeline}>
         {meals.length === 0 && (
           <div style={{ padding: 18 }}>

@@ -14,7 +14,7 @@ export function useWaterReminder(settings) {
     const fire = () => {
       const text = `Hora de beber água — ${settings.amount_ml} ml`;
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-        new Notification("Plano Alimentar", { body: text, icon: "/icon-192.png" });
+        new Notification("ActiveLife", { body: text, icon: "/icon-192.png" });
       } else {
         alert(text);
       }
