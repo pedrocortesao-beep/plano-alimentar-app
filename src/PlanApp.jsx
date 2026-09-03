@@ -537,12 +537,12 @@ function TodayView({ plan, meals, onSelectOption }) {
           const isOpen = openMealId === meal.id;
           return (
             <div key={meal.id} style={{ ...styles.timelineRow, borderTop: idx === 0 ? "none" : "1px solid #DEDAC8" }}>
-              <div style={styles.timeCol}>
-                {meal.meal_time && <>
+              {meal.meal_time && (
+                <div style={styles.timeCol}>
                   <Clock size={12} color="#8A4B52" />
                   <span style={styles.timeText}>{meal.meal_time}</span>
-                </>}
-              </div>
+                </div>
+              )}
               <div style={styles.mealCol}>
                 <button style={styles.mealHeadBtn} onClick={() => toggleMeal(meal.id)}>
                   <span style={styles.mealName}>{meal.name}</span>

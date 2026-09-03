@@ -1,8 +1,10 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.8.7";
+export const APP_VERSION = "1.8.9";
 
 export const CHANGELOG = [
+  { version: "1.8.9", notes: "Mais espaço aproveitado no ecrã Hoje: colunas da hora e das quantidades mais estreitas." },
+  { version: "1.8.8", notes: "No ecrã Hoje, refeições sem hora definida já não desperdiçam a margem à esquerda reservada para a hora." },
   { version: "1.8.7", notes: "Corrigido o bug real: o pedido que carrega o plano nunca ia buscar os valores nutricionais gravados — agora vai." },
   { version: "1.8.6", notes: "Grava de imediato ao sair, mudar de separador, ou fazer logout — evita perder alterações escritas mesmo antes dos ~600ms de espera normal." },
   { version: "1.8.5", notes: "Corrigida perda de dados ao editar vários campos nutricionais seguidos; correspondência de nomes de alimentos mais inteligente (por palavras em comum)." },
