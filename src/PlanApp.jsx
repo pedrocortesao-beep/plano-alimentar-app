@@ -424,11 +424,12 @@ function TodayView({ plan, meals, onSelectOption }) {
                       <ul style={styles.ingList}>
                         {selected.ingredients.map(i => {
                           const grams = approxGrams(i.qty, i.unit);
+                          const qtyLabel = i.qty ? `${i.qty} ${i.unit === "unidade" ? "Un" : (i.unit || "")}`.trim() : "";
                           return (
                             <li key={i.id} style={styles.ingItem}>
-                              <span style={styles.ingQty}>{i.qty} {i.unit !== "unidade" ? i.unit : ""}</span>
+                              {qtyLabel && <span style={styles.ingQty}>{qtyLabel}</span>}
                               <span>
-                                {i.name}{i.unit === "unidade" && i.qty ? ` (${i.qty})` : ""}{i.notes ? ` — ${i.notes}` : ""}
+                                {i.name}{i.notes ? ` — ${i.notes}` : ""}
                                 {grams && <span style={styles.approxGrams}> (≈ {grams} g)</span>}
                               </span>
                             </li>
