@@ -46,6 +46,7 @@ export const styles = {
   chipActive: { background: "#4B6350", borderColor: "#4B6350", color: "#fff" },
   ingList: { margin: 0, padding: 0, listStyle: "none" },
   ingItem: { display: "flex", gap: 8, fontSize: 14, color: "#3c463f", padding: "3px 0" },
+  approxGrams: { color: "#a3a08f", fontSize: 12.5, fontStyle: "italic" },
   ingQty: { minWidth: 62, color: "#6b7268", fontWeight: 600, fontSize: 13 },
   emptyMeal: { fontSize: 13, color: "#a3a08f", fontStyle: "italic", margin: 0 },
   mealObs: { fontSize: 12.5, color: "#8A4B52", marginTop: 6, marginBottom: 0 },

@@ -12,6 +12,7 @@ import MoreMenu from "./MoreMenu";
 import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
 import { getTodayPhrase } from "./dailyPhrase";
+import { approxGrams } from "./unitConversions";
 
 function computeVisibleKeys(menuVisibility, isTutor) {
   if (!menuVisibility) return null; // ainda a carregar: mostra tudo por omissão
@@ -421,12 +422,18 @@ function TodayView({ plan, meals, onSelectOption }) {
                     )}
                     {selected && selected.ingredients.length > 0 ? (
                       <ul style={styles.ingList}>
-                        {selected.ingredients.map(i => (
-                          <li key={i.id} style={styles.ingItem}>
-                            <span style={styles.ingQty}>{i.qty} {i.unit !== "unidade" ? i.unit : ""}</span>
-                            <span>{i.name}{i.unit === "unidade" && i.qty ? ` (${i.qty})` : ""}{i.notes ? ` — ${i.notes}` : ""}</span>
-                          </li>
-                        ))}
+                        {selected.ingredients.map(i => {
+                          const grams = approxGrams(i.qty, i.unit);
+                          return (
+                            <li key={i.id} style={styles.ingItem}>
+                              <span style={styles.ingQty}>{i.qty} {i.unit !== "unidade" ? i.unit : ""}</span>
+                              <span>
+                                {i.name}{i.unit === "unidade" && i.qty ? ` (${i.qty})` : ""}{i.notes ? ` — ${i.notes}` : ""}
+                                {grams && <span style={styles.approxGrams}> (≈ {grams} g)</span>}
+                              </span>
+                            </li>
+                          );
+                        })}
                       </ul>
                     ) : (
                       <p style={styles.emptyMeal}>Sem ingredientes definidos ainda.</p>
@@ -561,7 +568,7 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
             <div key={ing.id} style={styles.ingRow}>
               <input style={styles.ingNameInput} placeholder="Ingrediente" value={ing.name} onChange={e => onUpdateIngredient(ing.id, { name: e.target.value })} />
               <input style={styles.ingQtyInput} placeholder="Qtd" value={ing.qty} onChange={e => onUpdateIngredient(ing.id, { qty: e.target.value })} />
-              <select style={styles.ingUnitInput} value={ing.unit} onChange={e => onUpdateIngredient(ing.id, { unit: e.target.value })}>
+              <select style={styles.ingUnitInput} value={ing.unit || "g"} onChange={e => onUpdateIngredient(ing.id, { unit: e.target.value })}>
                 {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
               <button style={{ ...styles.iconBtn, color: "#8A4B52" }} onClick={() => onDeleteIngredient(ing.id)}><Trash2 size={12} /></button>

@@ -1,8 +1,9 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.6.1";
+export const APP_VERSION = "1.6.2";
 
 export const CHANGELOG = [
+  { version: "1.6.2", notes: "Unidade nunca fica em branco, e mostra equivalência aproximada em gramas (ml, colher, chávena...)." },
   { version: "1.6.1", notes: "Correção: agora dá para mover qualquer item (incluindo os originais) para dentro de um submenu." },
   { version: "1.6.0", notes: "Submenus no menu ⋮ — o administrador pode agrupar itens." },
   { version: "1.5.0", notes: "Administração: ordem do menu, visibilidade por grupo, e nº de alterações visíveis." },
