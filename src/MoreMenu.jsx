@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck, ChevronRight, ArrowLeft, Folder } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck, ChevronRight, ArrowLeft, Folder, Download } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
@@ -8,7 +8,7 @@ import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE } from "./menuItems";
 const ICONS = { gerir: Settings2, partilhar: Share2, agua: Droplet, sugestoes: MessageSquarePlus, dados: UserCircle, modulos: LayoutGrid, tutores: Users };
 const PANEL_ITEMS = { agua: "water", sugestoes: "feedback" };
 
-export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin, menuStructure, menuVisibleKeys }) {
+export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin, menuStructure, menuVisibleKeys, installPrompt, onInstall }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | "water" | "feedback" | { submenu: node }
 
@@ -40,8 +40,8 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
 
   return (
     <>
-      <button style={styles.iconBtn} onClick={() => { setOpen(true); setPanel(null); }} title="Mais opções">
-        <MoreVertical size={18} />
+      <button style={styles.logoutBtn} onClick={() => { setOpen(true); setPanel(null); }} title="Mais opções">
+        <MoreVertical size={13} style={{ verticalAlign: "-2px" }} />
       </button>
 
       {open && !panel && (
@@ -51,6 +51,11 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
               <span style={styles.planObsTitle}>Mais opções</span>
               <button style={styles.iconBtn} onClick={() => setOpen(false)}><X size={16} /></button>
             </div>
+            {installPrompt && (
+              <button style={menuStyles.item} onClick={() => { onInstall(); setOpen(false); }}>
+                <Download size={15} /> Instalar app
+              </button>
+            )}
             {rootNodes.map(node => node.type === "item" ? renderItemButton(node.key) : (
               <button key={node.id || node.label} style={menuStyles.item} onClick={() => setPanel({ submenu: node })}>
                 <Folder size={15} /> {node.label}

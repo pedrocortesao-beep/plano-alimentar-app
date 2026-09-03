@@ -1,8 +1,9 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.9.4";
+export const APP_VERSION = "1.9.5";
 
 export const CHANGELOG = [
+  { version: "1.9.5", notes: "Cabeçalho reorganizado (menu à esquerda, Sair à direita, mais espaço ao centro); contribuição para a base de alimentos totalmente automática, com passagem retroativa." },
   { version: "1.9.4", notes: "Podes contribuir alimentos novos para a base partilhada (não só o admin), e adicionada uma entrada \"Fruta\" genérica." },
   { version: "1.9.3", notes: "Reestruturado o ecrã Hoje: ingredientes e macros usam agora a largura toda, sem ficarem encostados à coluna da hora." },
   { version: "1.9.2", notes: "Quantidade dos ingredientes já não parte para duas linhas, e ficou mais destacada (negrito)." },

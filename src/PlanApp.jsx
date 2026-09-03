@@ -301,15 +301,22 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
 
   // Assim que o plano e a base de alimentos carregam, preenche automaticamente
   // os valores nutricionais de ingredientes já existentes que ainda não os
-  // têm (uma vez por pessoa gerida, para não repetir a cada alteração).
+  // têm, e contribui para a base partilhada os que já têm valores mas ainda
+  // não têm correspondência lá (uma vez por pessoa gerida).
   useEffect(() => {
     if (!plan || !foods.length) return;
     if (autoFilledForRef.current === viewingUserId) return;
     autoFilledForRef.current = viewingUserId;
+    const contributedNames = new Set();
     plan.meals.forEach(meal => {
       meal.options.forEach(opt => {
         opt.ingredients.forEach(ing => {
           applySuggestionIfEmpty(ing, (ingId, fields) => updateIngredient(meal.id, opt.id, ingId, fields), foods);
+          const norm = (ing.name || "").trim().toLowerCase();
+          if (ing.kcal_per_100 != null && norm && !contributedNames.has(norm) && !findMatch(foods, ing.name)) {
+            contributedNames.add(norm);
+            contributeFood(ing);
+          }
         });
       });
     });
@@ -383,7 +390,14 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
       <style>{`${fontImport} * { box-sizing: border-box; } input, textarea, select { font-family: 'Karla', sans-serif; } ::placeholder { color: #a3a08f; }`}</style>
 
       <header style={styles.header}>
-        <div>
+        {waterSettings && (
+          <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
+            onNavigate={changeTab} isAdmin={myRole === "admin"}
+            menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
+            menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)}
+            installPrompt={installPrompt} onInstall={onInstall} />
+        )}
+        <div style={styles.headerCenter}>
           <div style={styles.eyebrow}>ActiveLife</div>
           {tutees.length > 0 ? (
             <select style={styles.viewingSelect} value={viewingUserId} onChange={e => setViewingUserId(e.target.value)}>
@@ -394,22 +408,9 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             <h1 style={styles.h1}>Olá, {profile.name}</h1>
           )}
         </div>
-        <div style={styles.rowGap}>
-          {installPrompt && (
-            <button style={styles.smallBtnPrimary} onClick={onInstall}>
-              Instalar app
-            </button>
-          )}
-          {waterSettings && (
-            <MoreMenu userId={userId} waterSettings={waterSettings} onWaterSettingsChange={setWaterSettings}
-              onNavigate={changeTab} isAdmin={myRole === "admin"}
-              menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
-              menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)} />
-          )}
-          <button style={styles.logoutBtn} onClick={() => { flushAll(); supabase.auth.signOut(); }}>
-            <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
-          </button>
-        </div>
+        <button style={styles.logoutBtn} onClick={() => { flushAll(); supabase.auth.signOut(); }}>
+          <LogOut size={13} style={{ verticalAlign: "-2px", marginRight: 5 }} /> Sair
+        </button>
       </header>
 
       {updateNotice && (
@@ -760,32 +761,32 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
                       kcal
                       <input style={styles.nutritionInput} type="number" min="0" value={ing.kcal_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { kcal_per_100: e.target.value === "" ? null : Number(e.target.value) })}
-                        onBlur={() => onPropagateNutrition({ ...ing })} />
+                        onBlur={() => { onPropagateNutrition({ ...ing }); if (!findMatch(foods, ing.name)) onContributeFood(ing); }} />
                     </label>
                     <label style={styles.nutritionField}>
                       Proteína (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.protein_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { protein_per_100: e.target.value === "" ? null : Number(e.target.value) })}
-                        onBlur={() => onPropagateNutrition({ ...ing })} />
+                        onBlur={() => { onPropagateNutrition({ ...ing }); if (!findMatch(foods, ing.name)) onContributeFood(ing); }} />
                     </label>
                     <label style={styles.nutritionField}>
                       Hidratos (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.carbs_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { carbs_per_100: e.target.value === "" ? null : Number(e.target.value) })}
-                        onBlur={() => onPropagateNutrition({ ...ing })} />
+                        onBlur={() => { onPropagateNutrition({ ...ing }); if (!findMatch(foods, ing.name)) onContributeFood(ing); }} />
                     </label>
                     <label style={styles.nutritionField}>
                       Gordura (g)
                       <input style={styles.nutritionInput} type="number" min="0" step="0.1" value={ing.fat_per_100 ?? ""}
                         onChange={e => onUpdateIngredient(ing.id, { fat_per_100: e.target.value === "" ? null : Number(e.target.value) })}
-                        onBlur={() => onPropagateNutrition({ ...ing })} />
+                        onBlur={() => { onPropagateNutrition({ ...ing }); if (!findMatch(foods, ing.name)) onContributeFood(ing); }} />
                     </label>
                     {ing.unit === "unidade" && (
                       <label style={styles.nutritionField}>
                         Peso aprox. por unidade (g)
                         <input style={styles.nutritionInput} type="number" min="0" value={ing.grams_per_unit ?? ""}
                           onChange={e => onUpdateIngredient(ing.id, { grams_per_unit: e.target.value === "" ? null : Number(e.target.value) })}
-                          onBlur={() => onPropagateNutrition({ ...ing })} />
+                          onBlur={() => { onPropagateNutrition({ ...ing }); if (!findMatch(foods, ing.name)) onContributeFood(ing); }} />
                       </label>
                     )}
                   </div>
