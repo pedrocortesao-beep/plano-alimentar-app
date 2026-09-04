@@ -2,7 +2,7 @@ export const fontImport =
   "@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap');";
 
 export const styles = {
-  page: { minHeight: "100vh", background: "#EEF0E6", fontFamily: "'Karla', sans-serif", color: "#26312B", paddingBottom: 40 },
+  page: { minHeight: "100vh", background: "#EEF0E6", fontFamily: "'Karla', sans-serif", color: "#26312B", paddingBottom: 90 },
   authPage: { minHeight: "100vh", background: "#EEF0E6", fontFamily: "'Karla', sans-serif", color: "#26312B", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 },
   authCard: { background: "#FFFFFF", border: "1px solid #DEDAC8", borderRadius: 12, padding: "28px 24px", width: "100%", maxWidth: 360 },
   authEyebrow: { fontSize: 12, letterSpacing: 0.4, color: "#6b7268", marginBottom: 2 },
@@ -26,10 +26,25 @@ export const styles = {
   renameInput: { fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 22, border: "1px solid #DEDAC8", borderRadius: 6, padding: "3px 8px", background: "#fff" },
   logoutBtn: { border: "1px solid #DEDAC8", background: "#fff", color: "#6b7268", borderRadius: 8, padding: "8px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
   tabs: { display: "flex", gap: 4, padding: "0 20px", borderBottom: "1px solid #DEDAC8", marginTop: 8 },
+  subTabs: { display: "flex", gap: 6, marginBottom: 14, overflowX: "auto" },
+  subTabBtn: { display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap", border: "1px solid #DEDAC8", background: "#fff", color: "#6b7268", borderRadius: 20, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer" },
+  subTabBtnActive: { background: "#4B6350", borderColor: "#4B6350", color: "#fff" },
+  blockedBadge: { fontSize: 10, fontWeight: 700, color: "#8A4B52", background: "#F5E3E1", padding: "2px 7px", borderRadius: 10 },
   tabBtn: { border: "none", background: "transparent", fontFamily: "'Karla', sans-serif", fontSize: 14, fontWeight: 600, color: "#6b7268", padding: "10px 6px", cursor: "pointer", borderBottom: "2px solid transparent", marginRight: 16 },
   tabBtnActive: { color: "#26312B", borderBottom: "2px solid #C98A3D" },
   backLink: { display: "flex", alignItems: "center", gap: 4, border: "none", background: "transparent", color: "#6b7268", fontSize: 13, fontWeight: 600, cursor: "pointer", padding: "0 0 12px", marginTop: -6 },
   main: { padding: "18px 20px 0" },
+  bottomNav: {
+    position: "fixed", bottom: 0, left: 0, right: 0, display: "flex",
+    background: "#FFFFFF", borderTop: "1px solid #DEDAC8", zIndex: 25,
+    paddingBottom: "env(safe-area-inset-bottom, 0px)",
+  },
+  bottomNavBtn: {
+    flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+    border: "none", background: "transparent", color: "#a3a08f", cursor: "pointer",
+    padding: "10px 4px 8px", fontSize: 11, fontWeight: 600,
+  },
+  bottomNavBtnActive: { color: "#4B6350" },
   errorBanner: { margin: "0 20px", padding: "8px 12px", background: "#F5E3E1", color: "#8A4B52", fontSize: 13, borderRadius: 6 },
   updateBanner: { margin: "0 20px 12px", padding: "10px 12px", background: "#EAF0EA", color: "#4B6350", fontSize: 12.5, fontWeight: 600, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 },
   timeline: { background: "#FFFFFF", border: "1px solid #DEDAC8", borderRadius: 10, overflow: "hidden" },

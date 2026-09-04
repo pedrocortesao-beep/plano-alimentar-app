@@ -40,9 +40,13 @@ export default function FoodsAdminTab() {
     });
   };
 
+  const [formError, setFormError] = useState(null);
+
   const saveEdit = async () => {
     if (!draft.name.trim()) return;
-    await supabase.from("foods").update(toRow(draft)).eq("id", editingId);
+    setFormError(null);
+    const { error } = await supabase.from("foods").update(toRow(draft)).eq("id", editingId);
+    if (error) { setFormError(error.code === "23505" ? "Já existe um alimento com esse nome." : error.message); return; }
     setEditingId(null);
     load();
   };
@@ -54,7 +58,9 @@ export default function FoodsAdminTab() {
 
   const addNew = async () => {
     if (!draft.name.trim()) return;
-    await supabase.from("foods").insert(toRow(draft));
+    setFormError(null);
+    const { error } = await supabase.from("foods").insert(toRow(draft));
+    if (error) { setFormError(error.code === "23505" ? "Já existe um alimento com esse nome." : error.message); return; }
     setDraft(empty);
     setAdding(false);
     load();
@@ -72,7 +78,7 @@ export default function FoodsAdminTab() {
       {foods.map(f => (
         <div key={f.id} style={{ borderTop: "1px solid #F0EEE3", padding: "8px 0" }}>
           {editingId === f.id ? (
-            <FoodForm draft={draft} setDraft={setDraft} onSave={saveEdit} onCancel={() => setEditingId(null)} saveLabel="Guardar" />
+            <FoodForm draft={draft} setDraft={setDraft} onSave={saveEdit} onCancel={() => { setEditingId(null); setFormError(null); }} saveLabel="Guardar" error={formError} />
           ) : (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div>
@@ -93,7 +99,7 @@ export default function FoodsAdminTab() {
 
       {adding ? (
         <div style={{ marginTop: 10 }}>
-          <FoodForm draft={draft} setDraft={setDraft} onSave={addNew} onCancel={() => { setAdding(false); setDraft(empty); }} saveLabel="Adicionar" />
+          <FoodForm draft={draft} setDraft={setDraft} onSave={addNew} onCancel={() => { setAdding(false); setDraft(empty); setFormError(null); }} saveLabel="Adicionar" error={formError} />
         </div>
       ) : (
         <button style={{ ...styles.addOptionBtn, marginTop: 10 }} onClick={() => { setDraft(empty); setAdding(true); }}>
@@ -104,7 +110,7 @@ export default function FoodsAdminTab() {
   );
 }
 
-function FoodForm({ draft, setDraft, onSave, onCancel, saveLabel }) {
+function FoodForm({ draft, setDraft, onSave, onCancel, saveLabel, error }) {
   const set = (k) => (e) => setDraft(d => ({ ...d, [k]: e.target.value }));
   return (
     <div>
@@ -118,6 +124,7 @@ function FoodForm({ draft, setDraft, onSave, onCancel, saveLabel }) {
       </div>
       <input style={{ ...styles.obsInput, marginBottom: 8 }} type="number" placeholder="Peso por unidade, se aplicável (g) — ex.: 1 ovo ≈ 55"
         value={draft.grams_per_unit} onChange={set("grams_per_unit")} />
+      {error && <p style={styles.errorText}>{error}</p>}
       <div style={styles.rowGap}>
         <button style={styles.smallBtnPrimary} onClick={onSave}><Check size={13} /> {saveLabel}</button>
         <button style={styles.smallBtn} onClick={onCancel}><X size={13} /> Cancelar</button>

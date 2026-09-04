@@ -1,8 +1,13 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.9.5";
+export const APP_VERSION = "1.11.1";
 
 export const CHANGELOG = [
+  { version: "1.11.1", notes: "Barra de navegação em baixo, com um ícone por módulo ativo — aparece assim que tiveres 2 ou mais módulos ligados." },
+  { version: "1.11.0", notes: "Novo módulo: Métricas — regista peso, altura e medidas, com gráfico de evolução do peso. Ativa-o em Módulos." },
+  { version: "1.10.1", notes: "Administradores podem bloquear/desbloquear contas — bloqueado a sério, protegido também na base de dados, não só escondido na app." },
+  { version: "1.10.0", notes: "Administração dividida em separadores (Utilizadores, Menu, Alimentos), e mais informação por utilizador (idade, sexo, módulos, relações de tutor)." },
+  { version: "1.9.6", notes: "Revisão geral: corrigido um bug que podia criar alimentos duplicados na base partilhada, e erros da Administração passam a aparecer em vez de falharem em silêncio." },
   { version: "1.9.5", notes: "Cabeçalho reorganizado (menu à esquerda, Sair à direita, mais espaço ao centro); contribuição para a base de alimentos totalmente automática, com passagem retroativa." },
   { version: "1.9.4", notes: "Podes contribuir alimentos novos para a base partilhada (não só o admin), e adicionada uma entrada \"Fruta\" genérica." },
   { version: "1.9.3", notes: "Reestruturado o ecrã Hoje: ingredientes e macros usam agora a largura toda, sem ficarem encostados à coluna da hora." },

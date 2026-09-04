@@ -12,10 +12,16 @@ export default function AuthScreens({ installPrompt, onInstall }) {
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const [blockedMessage, setBlockedMessage] = useState(null);
+
   useEffect(() => {
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") setMode("recovery");
     });
+    if (localStorage.getItem("activelife_blocked")) {
+      localStorage.removeItem("activelife_blocked");
+      setBlockedMessage("A tua conta foi bloqueada. Contacta um administrador se achares que isto é um engano.");
+    }
     return () => listener.subscription.unsubscribe();
   }, []);
 
@@ -61,6 +67,7 @@ export default function AuthScreens({ installPrompt, onInstall }) {
       <style>{`${fontImport} * { box-sizing: border-box; } ::placeholder { color: #a3a08f; }`}</style>
       <div style={styles.authCard}>
         <div style={styles.authEyebrow}>ActiveLife</div>
+        {blockedMessage && <p style={{ ...styles.errorText, marginTop: -2 }}>{blockedMessage}</p>}
         {installPrompt && (
           <button style={{ ...styles.primaryBtn, marginTop: -6, marginBottom: 16, background: "#C98A3D" }} onClick={onInstall}>
             Instalar app no telemóvel

@@ -8,6 +8,8 @@ import PersonalDataTab from "./PersonalDataTab";
 import ModulesTab from "./ModulesTab";
 import TutorTab from "./TutorTab";
 import AdminTab from "./AdminTab";
+import MetricsTab from "./MetricsTab";
+import BottomNav from "./BottomNav";
 import MoreMenu from "./MoreMenu";
 import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
 import { useWaterReminder, loadWaterSettings } from "./useWaterReminder";
@@ -127,8 +129,15 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   // Dados da própria conta (papel, tutelados, água) — carregam uma vez, não
   // mudam quando trocas de quem estás a gerir.
   useEffect(() => {
-    supabase.from("profiles").select("role, modules").eq("id", userId).maybeSingle()
-      .then(({ data }) => { if (data) { setMyRole(data.role); setMyModules(data.modules || ["plano_alimentar"]); } });
+    supabase.from("profiles").select("role, modules, blocked").eq("id", userId).maybeSingle()
+      .then(({ data }) => {
+        if (data?.blocked) {
+          localStorage.setItem("activelife_blocked", "1");
+          supabase.auth.signOut();
+          return;
+        }
+        if (data) { setMyRole(data.role); setMyModules(data.modules || ["plano_alimentar"]); }
+      });
     loadWaterSettings(userId).then(setWaterSettings);
     loadTutees();
     supabase.from("app_settings").select("*").eq("id", true).maybeSingle()
@@ -345,15 +354,24 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
     });
   };
 
+  const foodsRef = useRef(foods);
+  useEffect(() => { foodsRef.current = foods; }, [foods]);
+  const contributingRef = useRef(new Set());
+
   const contributeFood = async (ing) => {
     if (ing.kcal_per_100 == null || !ing.name) return;
+    const norm = ing.name.trim().toLowerCase();
+    if (findMatch(foodsRef.current, ing.name)) return; // já existe (ou acabou de ser criado)
+    if (contributingRef.current.has(norm)) return; // já está a ser criado agora mesmo
+    contributingRef.current.add(norm);
     const { data, error } = await supabase.from("foods").insert({
       name: ing.name.trim(), aliases: [],
       kcal: ing.kcal_per_100, protein: ing.protein_per_100 || 0,
       carbs: ing.carbs_per_100 || 0, fat: ing.fat_per_100 || 0,
       grams_per_unit: ing.grams_per_unit || null,
     }).select().single();
-    if (!error && data) setFoods(f => [...f, data]);
+    contributingRef.current.delete(norm);
+    if (!error && data) setFoods(f => findMatch(f, data.name) ? f : [...f, data]);
   };
 
   const deleteIngredient = async (mealId, optionId, ingId) => {
@@ -395,7 +413,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             onNavigate={changeTab} isAdmin={myRole === "admin"}
             menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
             menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)}
-            installPrompt={installPrompt} onInstall={onInstall} />
+            installPrompt={installPrompt} onInstall={onInstall}
+            metricsEnabled={myModules.includes("metricas")} />
         )}
         <div style={styles.headerCenter}>
           <div style={styles.eyebrow}>ActiveLife</div>
@@ -456,7 +475,10 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         )}
         {tab === "tutores" && <TutorTab userId={userId} />}
         {tab === "admin" && myRole === "admin" && <AdminTab userId={userId} />}
+        {tab === "metricas" && myModules.includes("metricas") && <MetricsTab key={viewingUserId} userId={viewingUserId} />}
       </main>
+
+      <BottomNav modules={myModules} currentTab={tab} onNavigate={changeTab} />
     </div>
   );
 }
