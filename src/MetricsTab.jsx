@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Pencil, Check, X, TrendingUp } from "lucide-react";
+import { Plus, Trash2, Pencil, Check, X, TrendingUp, Target } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
@@ -18,14 +18,25 @@ const emptyDraft = () => ({
   weight_kg: "", height_cm: "", waist_cm: "", arm_cm: "", thigh_cm: "", chest_cm: "", notes: "",
 });
 
-export default function MetricsTab({ userId }) {
+function bmiCategory(bmi) {
+  if (bmi < 18.5) return "Abaixo do peso";
+  if (bmi < 25) return "Peso normal";
+  if (bmi < 30) return "Excesso de peso";
+  return "Obesidade";
+}
+
+export default function MetricsTab({ userId, onGoalsChange }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(emptyDraft());
 
-  useEffect(() => { load(); }, [userId]);
+  const [goals, setGoals] = useState({ target_weight_kg: "", target_kcal: "" });
+  const [editingGoals, setEditingGoals] = useState(false);
+  const [goalsDraft, setGoalsDraft] = useState({ target_weight_kg: "", target_kcal: "" });
+
+  useEffect(() => { load(); loadGoals(); }, [userId]);
 
   async function load() {
     setLoading(true);
@@ -34,6 +45,23 @@ export default function MetricsTab({ userId }) {
     setEntries(data || []);
     setLoading(false);
   }
+
+  async function loadGoals() {
+    const { data } = await supabase.from("goals").select("*").eq("user_id", userId).maybeSingle();
+    const g = { target_weight_kg: data?.target_weight_kg ?? "", target_kcal: data?.target_kcal ?? "" };
+    setGoals(g);
+    if (onGoalsChange) onGoalsChange(g);
+  }
+
+  const saveGoals = async () => {
+    const row = {
+      user_id: userId,
+      target_weight_kg: goalsDraft.target_weight_kg === "" ? null : Number(goalsDraft.target_weight_kg),
+      target_kcal: goalsDraft.target_kcal === "" ? null : Number(goalsDraft.target_kcal),
+    };
+    const { error } = await supabase.from("goals").upsert(row);
+    if (!error) { setGoals(goalsDraft); if (onGoalsChange) onGoalsChange(goalsDraft); setEditingGoals(false); }
+  };
 
   const toRow = (d) => ({
     user_id: userId,
@@ -73,6 +101,12 @@ export default function MetricsTab({ userId }) {
 
   if (loading) return <p style={styles.emptyMeal}>A carregar…</p>;
 
+  const latestWeight = entries.find(e => e.weight_kg != null);
+  const latestHeight = entries.find(e => e.height_cm != null);
+  const bmi = latestWeight && latestHeight
+    ? latestWeight.weight_kg / Math.pow(latestHeight.height_cm / 100, 2)
+    : null;
+
   const chartData = [...entries]
     .filter(e => e.weight_kg != null)
     .sort((a, b) => a.measured_on.localeCompare(b.measured_on))
@@ -80,6 +114,64 @@ export default function MetricsTab({ userId }) {
 
   return (
     <div>
+      <div style={styles.planObsBox}>
+        <div style={styles.planObsHead}>
+          <span style={styles.planObsTitle}><Target size={15} style={{ verticalAlign: "-2px", marginRight: 6 }} />Objetivos</span>
+          {!editingGoals && (
+            <button style={styles.iconBtn} onClick={() => { setGoalsDraft(goals); setEditingGoals(true); }}><Pencil size={13} /></button>
+          )}
+        </div>
+        {editingGoals ? (
+          <div>
+            <div style={styles.field}>
+              <label style={styles.label}>Peso-alvo (kg)</label>
+              <input style={styles.input} type="number" step="0.1" value={goalsDraft.target_weight_kg}
+                onChange={e => setGoalsDraft(g => ({ ...g, target_weight_kg: e.target.value }))} />
+            </div>
+            <div style={styles.field}>
+              <label style={styles.label}>Meta de calorias diárias (kcal)</label>
+              <input style={styles.input} type="number" value={goalsDraft.target_kcal}
+                onChange={e => setGoalsDraft(g => ({ ...g, target_kcal: e.target.value }))} />
+            </div>
+            <div style={styles.rowGap}>
+              <button style={styles.smallBtnPrimary} onClick={saveGoals}><Check size={13} /> Guardar</button>
+              <button style={styles.smallBtn} onClick={() => setEditingGoals(false)}><X size={13} /> Cancelar</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {goals.target_weight_kg || goals.target_kcal ? (
+              <div style={{ fontSize: 13, color: "#3c463f" }}>
+                {goals.target_weight_kg && (
+                  <p style={{ margin: "0 0 4px" }}>
+                    Peso-alvo: <strong>{goals.target_weight_kg} kg</strong>
+                    {latestWeight && (
+                      <span style={{ color: "#6b7268" }}> — faltam {Math.abs(latestWeight.weight_kg - goals.target_weight_kg).toFixed(1)} kg
+                        {latestWeight.weight_kg > goals.target_weight_kg ? " para perder" : latestWeight.weight_kg < goals.target_weight_kg ? " para ganhar" : " — objetivo atingido!"}
+                      </span>
+                    )}
+                  </p>
+                )}
+                {goals.target_kcal && <p style={{ margin: 0 }}>Meta diária: <strong>{goals.target_kcal} kcal</strong></p>}
+              </div>
+            ) : (
+              <p style={styles.emptyMeal}>Ainda não definiste objetivos — toca no lápis para adicionar.</p>
+            )}
+          </>
+        )}
+      </div>
+
+      {bmi && (
+        <div style={styles.planObsBox}>
+          <div style={styles.planObsTitle}>IMC (Índice de Massa Corporal)</div>
+          <p style={{ fontSize: 22, fontWeight: 700, color: "#4B6350", margin: "0 0 2px" }}>{bmi.toFixed(1)}</p>
+          <p style={{ fontSize: 13, color: "#6b7268", margin: 0 }}>{bmiCategory(bmi)}</p>
+          <p style={{ ...styles.emptyMeal, marginTop: 6 }}>
+            Calculado a partir do peso e altura mais recentes. É um indicador geral, não tem em conta massa muscular, idade ou outros fatores — não substitui avaliação profissional.
+          </p>
+        </div>
+      )}
+
       {chartData.length > 1 && (
         <div style={styles.planObsBox}>
           <div style={styles.planObsTitle}><TrendingUp size={15} style={{ verticalAlign: "-2px", marginRight: 6 }} />Evolução do peso</div>

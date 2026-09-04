@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck, ChevronRight, ArrowLeft, Folder, Download, TrendingUp } from "lucide-react";
+import { MoreVertical, Droplet, MessageSquarePlus, X, Info, Share2, Settings2, UserCircle, LayoutGrid, Users, ShieldCheck, ChevronRight, ArrowLeft, Folder, Download, TrendingUp, Dumbbell } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles } from "./styles";
 import { saveWaterSettings } from "./useWaterReminder";
@@ -8,7 +8,7 @@ import { MENU_ITEMS, DEFAULT_MENU_STRUCTURE } from "./menuItems";
 const ICONS = { gerir: Settings2, partilhar: Share2, agua: Droplet, sugestoes: MessageSquarePlus, dados: UserCircle, modulos: LayoutGrid, tutores: Users };
 const PANEL_ITEMS = { agua: "water", sugestoes: "feedback" };
 
-export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin, menuStructure, menuVisibleKeys, installPrompt, onInstall, metricsEnabled }) {
+export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange, onNavigate, isAdmin, menuStructure, menuVisibleKeys, installPrompt, onInstall, metricsEnabled, trainingEnabled }) {
   const [open, setOpen] = useState(false);
   const [panel, setPanel] = useState(null); // null | "water" | "feedback" | { submenu: node }
 
@@ -65,6 +65,11 @@ export default function MoreMenu({ userId, waterSettings, onWaterSettingsChange,
             {metricsEnabled && (
               <button style={menuStyles.item} onClick={() => go("metricas")}>
                 <TrendingUp size={15} /> Métricas
+              </button>
+            )}
+            {trainingEnabled && (
+              <button style={menuStyles.item} onClick={() => go("treino")}>
+                <Dumbbell size={15} /> Treino
               </button>
             )}
             {isAdmin && (
@@ -145,7 +150,7 @@ function WaterPanel({ userId, initial, onClose, onSaved }) {
           Ativar lembrete
         </label>
         <p style={{ ...styles.emptyMeal, marginTop: 8 }}>
-          Funciona enquanto a app estiver aberta num separador do telemóvel.
+          Só funciona com a app aberta e visível no ecrã — não dispara com o telemóvel bloqueado ou a app em segundo plano/fechada.
         </p>
         <button style={{ ...styles.primaryBtn, marginTop: 10 }} onClick={save} disabled={saving}>
           {saving ? "A guardar…" : "Guardar"}

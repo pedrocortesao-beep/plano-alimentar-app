@@ -1,8 +1,11 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.11.1";
+export const APP_VERSION = "1.13.1";
 
 export const CHANGELOG = [
+  { version: "1.13.1", notes: "Aviso do lembrete de água mais claro: só funciona com a app aberta e visível, não em segundo plano ou com o telemóvel bloqueado." },
+  { version: "1.13.0", notes: "Novo módulo: Plano de Treino — dias de treino com exercícios (séries, reps, peso, descanso), com o dia de hoje destacado. Ativa-o em Módulos." },
+  { version: "1.12.0", notes: "Objetivos (peso-alvo e meta de calorias) com comparação no ecrã Hoje, IMC automático em Métricas, e fotografias nas opções de refeição." },
   { version: "1.11.1", notes: "Barra de navegação em baixo, com um ícone por módulo ativo — aparece assim que tiveres 2 ou mais módulos ligados." },
   { version: "1.11.0", notes: "Novo módulo: Métricas — regista peso, altura e medidas, com gráfico de evolução do peso. Ativa-o em Módulos." },
   { version: "1.10.1", notes: "Administradores podem bloquear/desbloquear contas — bloqueado a sério, protegido também na base de dados, não só escondido na app." },

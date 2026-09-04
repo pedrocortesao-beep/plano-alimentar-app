@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock, Flame } from "lucide-react";
+import { Plus, Trash2, ChevronUp, ChevronDown, Clock, Pencil, Check, X, ChevronRight, LogOut, Lock, Flame, Camera } from "lucide-react";
 import { supabase } from "./supabaseClient";
 import { styles, fontImport, UNITS } from "./styles";
 import AboutTab, { APP_VERSION, CHANGELOG } from "./AboutTab";
@@ -9,6 +9,7 @@ import ModulesTab from "./ModulesTab";
 import TutorTab from "./TutorTab";
 import AdminTab from "./AdminTab";
 import MetricsTab from "./MetricsTab";
+import TrainingTab from "./TrainingTab";
 import BottomNav from "./BottomNav";
 import MoreMenu from "./MoreMenu";
 import { DEFAULT_MENU_STRUCTURE } from "./menuItems";
@@ -79,6 +80,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
   const [myModules, setMyModules] = useState(["plano_alimentar"]);
   const [tutees, setTutees] = useState([]);
   const [appSettings, setAppSettings] = useState(null);
+  const [goals, setGoals] = useState({ target_weight_kg: "", target_kcal: "" });
   const [foods, setFoods] = useState([]);
   const [profile, setProfile] = useState({ name: session.user.email, birth_date: null, sex: null, modules: ["plano_alimentar"] });
   const [plan, setPlan] = useState(null);
@@ -165,12 +167,15 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         .from("profiles").select("name, birth_date, sex, modules").eq("id", targetId).maybeSingle();
       if (profileRow) setProfile(profileRow);
 
+      supabase.from("goals").select("target_weight_kg, target_kcal").eq("user_id", targetId).maybeSingle()
+        .then(({ data }) => setGoals({ target_weight_kg: data?.target_weight_kg ?? "", target_kcal: data?.target_kcal ?? "" }));
+
       let { data: planRow, error } = await supabase
         .from("plans")
         .select(`
           id, observations, locked,
           meals ( id, name, meal_time, position, observations, selected_option_id,
-            options!meal_id ( id, name, observations,
+            options!meal_id ( id, name, observations, photo_url,
               ingredients ( id, name, qty, unit, notes, kcal_per_100, protein_per_100, carbs_per_100, fat_per_100, grams_per_unit )
             )
           )
@@ -414,7 +419,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
             menuStructure={appSettings?.menu_structure || DEFAULT_MENU_STRUCTURE}
             menuVisibleKeys={computeVisibleKeys(appSettings?.menu_visibility, tutees.length > 0)}
             installPrompt={installPrompt} onInstall={onInstall}
-            metricsEnabled={myModules.includes("metricas")} />
+            metricsEnabled={myModules.includes("metricas")} trainingEnabled={myModules.includes("plano_treino")} />
         )}
         <div style={styles.headerCenter}>
           <div style={styles.eyebrow}>ActiveLife</div>
@@ -448,7 +453,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           </button>
         )}
         {tab === "hoje" && (
-          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} />
+          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} targetKcal={goals.target_kcal} />
         )}
         {tab === "gerir" && (
           <ManageView
@@ -475,7 +480,8 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
         )}
         {tab === "tutores" && <TutorTab userId={userId} />}
         {tab === "admin" && myRole === "admin" && <AdminTab userId={userId} />}
-        {tab === "metricas" && myModules.includes("metricas") && <MetricsTab key={viewingUserId} userId={viewingUserId} />}
+        {tab === "metricas" && myModules.includes("metricas") && <MetricsTab key={viewingUserId} userId={viewingUserId} onGoalsChange={setGoals} />}
+        {tab === "treino" && myModules.includes("plano_treino") && <TrainingTab key={viewingUserId} userId={viewingUserId} />}
       </main>
 
       <BottomNav modules={myModules} currentTab={tab} onNavigate={changeTab} />
@@ -523,7 +529,7 @@ function MacroSummary({ ingredients }) {
   );
 }
 
-function TodayView({ plan, meals, onSelectOption }) {
+function TodayView({ plan, meals, onSelectOption, targetKcal }) {
   const [pinnedId, setPinnedId] = useState(null);
   const [tick, setTick] = useState(0);
 
@@ -553,6 +559,12 @@ function TodayView({ plan, meals, onSelectOption }) {
             <div style={styles.dailyMacroItem}><strong>{dailyTotals.carbs}g</strong><span> hidratos</span></div>
             <div style={styles.dailyMacroItem}><strong>{dailyTotals.fat}g</strong><span> gordura</span></div>
           </div>
+          {targetKcal && (
+            <p style={{ ...styles.macroIncomplete, color: "#4B6350", fontStyle: "normal", fontWeight: 600 }}>
+              {dailyTotals.kcal} / {targetKcal} kcal da meta diária
+              {dailyTotals.kcal > targetKcal ? ` (+${dailyTotals.kcal - targetKcal})` : ` (faltam ${targetKcal - dailyTotals.kcal})`}
+            </p>
+          )}
           {dailyTotals.incomplete && (
             <p style={styles.macroIncomplete}>Sem dados nutricionais: {dailyTotals.missing.join(", ")}.</p>
           )}
@@ -594,6 +606,9 @@ function TodayView({ plan, meals, onSelectOption }) {
                         </button>
                       ))}
                     </div>
+                  )}
+                  {selected && selected.photo_url && (
+                    <img src={selected.photo_url} alt={selected.name} style={styles.optionPhotoHoje} />
                   )}
                   {selected && selected.ingredients.length > 0 ? (
                     <ul style={styles.ingList}>
@@ -737,6 +752,43 @@ function applySuggestionIfEmpty(ing, onUpdateIngredient, foods) {
   });
 }
 
+function PhotoUploader({ option, onUpdateOption }) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const upload = async (file) => {
+    if (!file) return;
+    setUploading(true); setError(null);
+    const ext = file.name.split(".").pop();
+    const path = `${option.id}-${Date.now()}.${ext}`;
+    const { error: upErr } = await supabase.storage.from("option-photos").upload(path, file, { upsert: true });
+    if (upErr) { setError("Não foi possível enviar a foto."); setUploading(false); return; }
+    const { data } = supabase.storage.from("option-photos").getPublicUrl(path);
+    onUpdateOption({ photo_url: data.publicUrl });
+    setUploading(false);
+  };
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {option.photo_url ? (
+        <div style={{ position: "relative", marginBottom: 6 }}>
+          <img src={option.photo_url} alt={option.name} style={styles.optionPhoto} />
+          <button style={styles.removePhotoBtn} onClick={() => onUpdateOption({ photo_url: null })}>
+            <Trash2 size={12} /> Remover foto
+          </button>
+        </div>
+      ) : (
+        <label style={styles.photoUploadBtn}>
+          <Camera size={13} /> {uploading ? "A enviar…" : "Adicionar foto"}
+          <input type="file" accept="image/*" style={{ display: "none" }}
+            onChange={e => upload(e.target.files[0])} disabled={uploading} />
+        </label>
+      )}
+      {error && <p style={styles.errorText}>{error}</p>}
+    </div>
+  );
+}
+
 function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOption, foods, onPropagateNutrition, onContributeFood,
   onAddIngredient, onUpdateIngredient, onDeleteIngredient }) {
   const [nutritionOpenId, setNutritionOpenId] = useState(null);
@@ -753,6 +805,7 @@ function OptionEditor({ option, expanded, onToggle, onUpdateOption, onDeleteOpti
       </div>
       {expanded && (
         <div style={styles.optionBody}>
+          <PhotoUploader option={option} onUpdateOption={onUpdateOption} />
           {option.ingredients.map(ing => (
             <div key={ing.id}>
               <div style={styles.ingRow}>

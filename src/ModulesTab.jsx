@@ -5,7 +5,7 @@ import { styles } from "./styles";
 
 const MODULES = [
   { key: "plano_alimentar", label: "Plano Alimentar", desc: "Refeições, opções e ingredientes.", available: true },
-  { key: "plano_treino", label: "Plano de Treino", desc: "Exercícios e planos de treino.", available: false },
+  { key: "plano_treino", label: "Plano de Treino", desc: "Exercícios e planos de treino.", available: true },
   { key: "metricas", label: "Recolha de Métricas", desc: "Peso, altura, larguras (braço, coxa, ...).", available: true },
 ];
 

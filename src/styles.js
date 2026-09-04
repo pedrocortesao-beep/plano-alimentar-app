@@ -105,6 +105,16 @@ export const styles = {
   nutritionInput: { border: "1px solid #DEDAC8", borderRadius: 6, padding: "7px 8px", fontSize: 13, background: "#FBFAF5", width: "100%", minWidth: 0, boxSizing: "border-box" },
   suggestionBtn: { display: "block", width: "100%", textAlign: "left", background: "#FBF3E4", border: "1px solid #E8CFA0", color: "#8A6A2E", borderRadius: 6, padding: "8px 10px", fontSize: 12, fontWeight: 600, cursor: "pointer", marginBottom: 8, lineHeight: 1.4 },
   contributeBtn: { display: "flex", alignItems: "center", gap: 5, width: "100%", justifyContent: "center", background: "transparent", border: "1px dashed #C3BFA9", color: "#4B6350", borderRadius: 6, padding: "7px 8px", fontSize: 11.5, fontWeight: 600, cursor: "pointer", marginTop: 8 },
+  photoUploadBtn: { display: "flex", alignItems: "center", gap: 6, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "10px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", cursor: "pointer" },
+  optionPhoto: { width: "100%", maxHeight: 160, objectFit: "cover", borderRadius: 8, display: "block" },
+  optionPhotoHoje: { width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, display: "block", marginBottom: 8 },
+  removePhotoBtn: { position: "absolute", bottom: 6, right: 6, display: "flex", alignItems: "center", gap: 4, background: "rgba(38,49,43,0.75)", color: "#fff", border: "none", borderRadius: 6, padding: "4px 8px", fontSize: 11, fontWeight: 600, cursor: "pointer" },
+  dayOfWeekSelect: { border: "1px solid #DEDAC8", borderRadius: 6, fontSize: 12, padding: "4px 6px", background: "#FBFAF5" },
+  trainingDayToday: { border: "1px solid #C98A3D" },
+  trainingTodayBadge: { display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, fontWeight: 700, color: "#8A6A2E", background: "#FBF3E4", padding: "5px 9px", borderRadius: 6, margin: "0 0 8px", width: "fit-content" },
+  exerciseRow: { border: "1px solid #E4E1D2", borderRadius: 8, padding: "8px", marginBottom: 6, background: "#FBFAF5" },
+  exerciseFieldsRow: { display: "flex", alignItems: "flex-end", gap: 8, marginTop: 6, flexWrap: "wrap" },
+  exerciseField: { fontSize: 10.5, color: "#6b7268", fontWeight: 600, display: "flex", flexDirection: "column", gap: 2, width: 64 },
   addOptionBtn: { display: "flex", alignItems: "center", gap: 5, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", background: "transparent", cursor: "pointer" },
 };
 
