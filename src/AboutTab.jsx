@@ -1,8 +1,9 @@
 import { styles } from "./styles";
 
-export const APP_VERSION = "1.14.0";
+export const APP_VERSION = "1.14.1";
 
 export const CHANGELOG = [
+  { version: "1.14.1", notes: "\"Marcar como comido\" mostra agora o nome da opção; extras sugerem valores automaticamente e podem contribuir para a base de alimentos (indicando o peso)." },
   { version: "1.14.0", notes: "Regista o que realmente comeste — marca refeições como comidas, adiciona extras (ex.: um chocolate), e vê o total consumido hoje face à tua meta. Reinicia sozinho todos os dias." },
   { version: "1.13.1", notes: "Aviso do lembrete de água mais claro: só funciona com a app aberta e visível, não em segundo plano ou com o telemóvel bloqueado." },
   { version: "1.13.0", notes: "Novo módulo: Plano de Treino — dias de treino com exercícios (séries, reps, peso, descanso), com o dia de hoje destacado. Ativa-o em Módulos." },
