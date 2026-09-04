@@ -453,7 +453,7 @@ export default function PlanApp({ session, installPrompt, onInstall }) {
           </button>
         )}
         {tab === "hoje" && (
-          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} targetKcal={goals.target_kcal} />
+          <TodayView plan={plan} meals={sortedMeals} onSelectOption={selectOption} targetKcal={goals.target_kcal} userId={viewingUserId} />
         )}
         {tab === "gerir" && (
           <ManageView
@@ -529,26 +529,102 @@ function MacroSummary({ ingredients }) {
   );
 }
 
-function TodayView({ plan, meals, onSelectOption, targetKcal }) {
+function todayLocalISO() {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function TodayView({ plan, meals, onSelectOption, targetKcal, userId }) {
   const [pinnedId, setPinnedId] = useState(null);
   const [tick, setTick] = useState(0);
+  const [log, setLog] = useState([]);
+  const [addingExtra, setAddingExtra] = useState(false);
+  const [extraDraft, setExtraDraft] = useState({ label: "", kcal: "", protein: "", carbs: "", fat: "" });
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => { loadLog(); }, [userId]);
+
+  async function loadLog() {
+    const { data } = await supabase.from("consumption_log")
+      .select("*").eq("user_id", userId).eq("log_date", todayLocalISO());
+    setLog(data || []);
+  }
+
+  const markEaten = async (meal, selected) => {
+    const macros = computeMacros(selected.ingredients) || { kcal: 0, protein: 0, carbs: 0, fat: 0 };
+    const row = {
+      user_id: userId, log_date: todayLocalISO(), meal_id: meal.id,
+      label: `${meal.name} — ${selected.name}`,
+      kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fat: macros.fat,
+    };
+    const { data, error } = await supabase.from("consumption_log").insert(row).select().single();
+    if (!error) setLog(l => [...l, data]);
+  };
+
+  const unmarkEaten = async (mealId) => {
+    const entry = log.find(e => e.meal_id === mealId);
+    if (!entry) return;
+    setLog(l => l.filter(e => e.id !== entry.id));
+    await supabase.from("consumption_log").delete().eq("id", entry.id);
+  };
+
+  const addExtra = async () => {
+    if (!extraDraft.label.trim()) return;
+    const row = {
+      user_id: userId, log_date: todayLocalISO(), meal_id: null,
+      label: extraDraft.label.trim(),
+      kcal: Number(extraDraft.kcal) || 0, protein: Number(extraDraft.protein) || 0,
+      carbs: Number(extraDraft.carbs) || 0, fat: Number(extraDraft.fat) || 0,
+    };
+    const { data, error } = await supabase.from("consumption_log").insert(row).select().single();
+    if (!error) { setLog(l => [...l, data]); setExtraDraft({ label: "", kcal: "", protein: "", carbs: "", fat: "" }); setAddingExtra(false); }
+  };
+
+  const removeLogEntry = async (id) => {
+    setLog(l => l.filter(e => e.id !== id));
+    await supabase.from("consumption_log").delete().eq("id", id);
+  };
+
   const autoId = getCurrentMealId(meals);
   const openMealId = pinnedId || autoId;
   const toggleMeal = (id) => { if (id !== openMealId) setPinnedId(id); };
 
   const dailyTotals = computeDailyMacros(meals);
+  const consumedTotals = log.reduce((acc, e) => ({
+    kcal: acc.kcal + Number(e.kcal || 0), protein: acc.protein + Number(e.protein || 0),
+    carbs: acc.carbs + Number(e.carbs || 0), fat: acc.fat + Number(e.fat || 0),
+  }), { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+  const extras = log.filter(e => !e.meal_id);
 
   return (
     <div>
       <div style={styles.phraseCard}>
         <p style={styles.phraseText}>"{getTodayPhrase()}"</p>
       </div>
+
+      {log.length > 0 && (
+        <div style={{ ...styles.dailyMacroCard, borderColor: "#4B6350" }}>
+          <div style={styles.dailyMacroTitle}>Já comeste hoje</div>
+          <div style={styles.dailyMacroRow}>
+            <div style={styles.dailyMacroItem}><strong>{Math.round(consumedTotals.kcal)}</strong><span> kcal</span></div>
+            <div style={styles.dailyMacroItem}><strong>{consumedTotals.protein.toFixed(1)}g</strong><span> proteína</span></div>
+            <div style={styles.dailyMacroItem}><strong>{consumedTotals.carbs.toFixed(1)}g</strong><span> hidratos</span></div>
+            <div style={styles.dailyMacroItem}><strong>{consumedTotals.fat.toFixed(1)}g</strong><span> gordura</span></div>
+          </div>
+          {targetKcal && (
+            <p style={{ ...styles.macroIncomplete, color: "#4B6350", fontStyle: "normal", fontWeight: 600 }}>
+              {Math.round(consumedTotals.kcal)} / {targetKcal} kcal
+              {consumedTotals.kcal > targetKcal
+                ? ` (já ultrapassaste em ${Math.round(consumedTotals.kcal - targetKcal)})`
+                : ` (ainda podes comer ${Math.round(targetKcal - consumedTotals.kcal)})`}
+            </p>
+          )}
+        </div>
+      )}
 
       {dailyTotals && (
         <div style={styles.dailyMacroCard}>
@@ -581,6 +657,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal }) {
         {meals.map((meal, idx) => {
           const selected = meal.options.find(o => o.id === meal.selected_option_id) || meal.options[0];
           const isOpen = openMealId === meal.id;
+          const isEaten = log.some(e => e.meal_id === meal.id);
           return (
             <div key={meal.id} style={{ ...styles.timelineWrap, borderTop: idx === 0 ? "none" : "1px solid #DEDAC8" }}>
               <div style={styles.timelineHeadRow}>
@@ -597,6 +674,12 @@ function TodayView({ plan, meals, onSelectOption, targetKcal }) {
               </div>
               {isOpen && (
                 <div style={styles.mealBody}>
+                  {selected && (
+                    <button style={isEaten ? styles.eatenBtnActive : styles.eatenBtn}
+                      onClick={() => isEaten ? unmarkEaten(meal.id) : markEaten(meal, selected)}>
+                      <Check size={13} /> {isEaten ? "Comido — toca para desfazer" : "Marcar como comido"}
+                    </button>
+                  )}
                   {meal.options.length > 1 && (
                     <div style={styles.optionChips}>
                       {meal.options.map(o => (
@@ -637,6 +720,40 @@ function TodayView({ plan, meals, onSelectOption, targetKcal }) {
             </div>
           );
         })}
+      </div>
+
+      <div style={styles.planObsBox}>
+        <div style={styles.planObsHead}>
+          <span style={styles.planObsTitle}>Extras (fora do plano)</span>
+          {!addingExtra && (
+            <button style={styles.iconBtn} onClick={() => setAddingExtra(true)}><Plus size={15} /></button>
+          )}
+        </div>
+        {extras.length === 0 && !addingExtra && (
+          <p style={styles.emptyMeal}>Nada extra registado hoje.</p>
+        )}
+        {extras.map(e => (
+          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0" }}>
+            <span style={{ fontSize: 13.5 }}>{e.label} <span style={{ color: "#6b7268", fontSize: 12 }}>({Math.round(e.kcal)} kcal)</span></span>
+            <button style={{ ...styles.iconBtn, color: "#8A4B52" }} onClick={() => removeLogEntry(e.id)}><Trash2 size={13} /></button>
+          </div>
+        ))}
+        {addingExtra && (
+          <div style={{ marginTop: 8 }}>
+            <input style={{ ...styles.obsInput, marginBottom: 6 }} placeholder="O que comeste? (ex.: Chocolate)"
+              value={extraDraft.label} onChange={e => setExtraDraft(d => ({ ...d, label: e.target.value }))} />
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, marginBottom: 8 }}>
+              <input style={styles.nutritionInput} type="number" placeholder="kcal" value={extraDraft.kcal} onChange={e => setExtraDraft(d => ({ ...d, kcal: e.target.value }))} />
+              <input style={styles.nutritionInput} type="number" step="0.1" placeholder="Proteína (g)" value={extraDraft.protein} onChange={e => setExtraDraft(d => ({ ...d, protein: e.target.value }))} />
+              <input style={styles.nutritionInput} type="number" step="0.1" placeholder="Hidratos (g)" value={extraDraft.carbs} onChange={e => setExtraDraft(d => ({ ...d, carbs: e.target.value }))} />
+              <input style={styles.nutritionInput} type="number" step="0.1" placeholder="Gordura (g)" value={extraDraft.fat} onChange={e => setExtraDraft(d => ({ ...d, fat: e.target.value }))} />
+            </div>
+            <div style={styles.rowGap}>
+              <button style={styles.smallBtnPrimary} onClick={addExtra}><Check size={13} /> Adicionar</button>
+              <button style={styles.smallBtn} onClick={() => setAddingExtra(false)}><X size={13} /> Cancelar</button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={styles.planObsBox}>

@@ -115,6 +115,8 @@ export const styles = {
   exerciseRow: { border: "1px solid #E4E1D2", borderRadius: 8, padding: "8px", marginBottom: 6, background: "#FBFAF5" },
   exerciseFieldsRow: { display: "flex", alignItems: "flex-end", gap: 8, marginTop: 6, flexWrap: "wrap" },
   exerciseField: { fontSize: 10.5, color: "#6b7268", fontWeight: 600, display: "flex", flexDirection: "column", gap: 2, width: 64 },
+  eatenBtn: { display: "flex", alignItems: "center", gap: 6, width: "100%", justifyContent: "center", border: "1px solid #DEDAC8", background: "#fff", color: "#6b7268", borderRadius: 8, padding: "9px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", marginBottom: 10 },
+  eatenBtnActive: { display: "flex", alignItems: "center", gap: 6, width: "100%", justifyContent: "center", border: "1px solid #4B6350", background: "#EAF0EA", color: "#4B6350", borderRadius: 8, padding: "9px", fontSize: 12.5, fontWeight: 700, cursor: "pointer", marginBottom: 10 },
   addOptionBtn: { display: "flex", alignItems: "center", gap: 5, justifyContent: "center", border: "1px dashed #C3BFA9", borderRadius: 8, padding: "8px", fontSize: 12.5, fontWeight: 600, color: "#4B6350", background: "transparent", cursor: "pointer" },
 };
 
