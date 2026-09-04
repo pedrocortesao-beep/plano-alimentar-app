@@ -539,7 +539,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
   const [tick, setTick] = useState(0);
   const [log, setLog] = useState([]);
   const [addingExtra, setAddingExtra] = useState(false);
-  const [extraDraft, setExtraDraft] = useState({ label: "", kcal: "", protein: "", carbs: "", fat: "", weight_g: "" });
+  const [extraDraft, setExtraDraft] = useState({ label: "", kcal: "", protein: "", carbs: "", fat: "", weight_g: "", qty: "" });
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 60000);
@@ -557,7 +557,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
   const markEaten = async (meal, selected) => {
     const macros = computeMacros(selected.ingredients) || { kcal: 0, protein: 0, carbs: 0, fat: 0 };
     const row = {
-      user_id: userId, log_date: todayLocalISO(), meal_id: meal.id,
+      user_id: userId, log_date: todayLocalISO(), meal_id: meal.id, option_id: selected.id,
       label: `${meal.name} — ${selected.name}`,
       kcal: macros.kcal, protein: macros.protein, carbs: macros.carbs, fat: macros.fat,
     };
@@ -579,14 +579,46 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
     if (!match) { setMatchedExtraFood(null); return; }
     setMatchedExtraFood(match);
     if (extraDraft.kcal !== "") return; // já tem valores, não sobrepor
-    const weight = Number(extraDraft.weight_g) || 100;
-    setExtraDraft(d => ({
-      ...d, weight_g: weight,
-      kcal: Math.round(match.kcal * weight / 100),
-      protein: Math.round(match.protein * weight / 100 * 10) / 10,
-      carbs: Math.round(match.carbs * weight / 100 * 10) / 10,
-      fat: Math.round(match.fat * weight / 100 * 10) / 10,
-    }));
+    if (match.grams_per_unit) {
+      const qty = Number(extraDraft.qty) || 1;
+      const weight = qty * match.grams_per_unit;
+      setExtraDraft(d => ({
+        ...d, qty,
+        kcal: Math.round(match.kcal * weight / 100),
+        protein: Math.round(match.protein * weight / 100 * 10) / 10,
+        carbs: Math.round(match.carbs * weight / 100 * 10) / 10,
+        fat: Math.round(match.fat * weight / 100 * 10) / 10,
+      }));
+    } else {
+      const weight = Number(extraDraft.weight_g) || 100;
+      setExtraDraft(d => ({
+        ...d, weight_g: weight,
+        kcal: Math.round(match.kcal * weight / 100),
+        protein: Math.round(match.protein * weight / 100 * 10) / 10,
+        carbs: Math.round(match.carbs * weight / 100 * 10) / 10,
+        fat: Math.round(match.fat * weight / 100 * 10) / 10,
+      }));
+    }
+  };
+
+  const recomputeFromQty = (qty) => {
+    if (matchedExtraFood?.grams_per_unit) {
+      const weight = (Number(qty) || 0) * matchedExtraFood.grams_per_unit;
+      setExtraDraft(d => ({
+        ...d, qty,
+        kcal: Math.round(matchedExtraFood.kcal * weight / 100),
+        protein: Math.round(matchedExtraFood.protein * weight / 100 * 10) / 10,
+        carbs: Math.round(matchedExtraFood.carbs * weight / 100 * 10) / 10,
+        fat: Math.round(matchedExtraFood.fat * weight / 100 * 10) / 10,
+      }));
+    } else {
+      setExtraDraft(d => ({ ...d, qty }));
+    }
+  };
+
+  const effectiveWeight = () => {
+    if (matchedExtraFood?.grams_per_unit) return (Number(extraDraft.qty) || 0) * matchedExtraFood.grams_per_unit;
+    return Number(extraDraft.weight_g) || 0;
   };
 
   const updateExtraWeight = (weight_g) => {
@@ -616,7 +648,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
       setLog(l => [...l, data]);
       // Se souberes o peso do que comeste, contribui para a base partilhada
       // (convertido para valores "por 100g", como o resto da base de dados).
-      const weight = Number(extraDraft.weight_g);
+      const weight = effectiveWeight();
       if (weight > 0 && row.kcal > 0 && !findMatch(foods, row.label)) {
         onContributeFood({
           name: row.label,
@@ -626,7 +658,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
           fat_per_100: (row.fat / weight) * 100,
         });
       }
-      setExtraDraft({ label: "", kcal: "", protein: "", carbs: "", fat: "", weight_g: "" });
+      setExtraDraft({ label: "", kcal: "", protein: "", carbs: "", fat: "", weight_g: "", qty: "" });
       setMatchedExtraFood(null);
       setAddingExtra(false);
     }
@@ -705,7 +737,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
         {meals.map((meal, idx) => {
           const selected = meal.options.find(o => o.id === meal.selected_option_id) || meal.options[0];
           const isOpen = openMealId === meal.id;
-          const isEaten = log.some(e => e.meal_id === meal.id);
+          const eatenEntry = log.find(e => e.meal_id === meal.id);
           return (
             <div key={meal.id} style={{ ...styles.timelineWrap, borderTop: idx === 0 ? "none" : "1px solid #DEDAC8" }}>
               <div style={styles.timelineHeadRow}>
@@ -723,10 +755,12 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
               {isOpen && (
                 <div style={styles.mealBody}>
                   {selected && (
-                    <button style={isEaten ? styles.eatenBtnActive : styles.eatenBtn}
-                      onClick={() => isEaten ? unmarkEaten(meal.id) : markEaten(meal, selected)}>
+                    <button style={eatenEntry ? styles.eatenBtnActive : styles.eatenBtn}
+                      onClick={() => eatenEntry ? unmarkEaten(meal.id) : markEaten(meal, selected)}>
                       <Check size={13} />
-                      {isEaten ? `Comido: "${selected.name}" — toca para desfazer` : `Marcar "${selected.name}" como comido`}
+                      {eatenEntry
+                        ? `Comido: "${meal.options.find(o => o.id === eatenEntry.option_id)?.name || eatenEntry.label}" — toca para desfazer`
+                        : `Marcar "${selected.name}" como comido`}
                     </button>
                   )}
                   {meal.options.length > 1 && (
@@ -734,6 +768,7 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
                       {meal.options.map(o => (
                         <button key={o.id} onClick={() => onSelectOption(meal.id, o.id)}
                           style={{ ...styles.chip, ...(o.id === (selected && selected.id) ? styles.chipActive : {}) }}>
+                          {o.id === eatenEntry?.option_id && <Check size={11} style={{ verticalAlign: "-1px", marginRight: 3 }} />}
                           {o.name}
                         </button>
                       ))}
@@ -792,8 +827,14 @@ function TodayView({ plan, meals, onSelectOption, targetKcal, userId, foods, onC
             <input style={{ ...styles.obsInput, marginBottom: 6 }} placeholder="O que comeste? (ex.: Chocolate)"
               value={extraDraft.label} onChange={e => setExtraDraft(d => ({ ...d, label: e.target.value }))}
               onBlur={suggestExtra} />
-            <input style={{ ...styles.obsInput, marginBottom: 6 }} type="number" placeholder="Peso aproximado (g) — opcional, ajuda a sugerir e a contribuir para a base"
-              value={extraDraft.weight_g} onChange={e => updateExtraWeight(e.target.value)} />
+            {matchedExtraFood?.grams_per_unit ? (
+              <input style={{ ...styles.obsInput, marginBottom: 6 }} type="number" min="0" step="0.5"
+                placeholder={`Quantas unidades? (1 = ${matchedExtraFood.grams_per_unit}g)`}
+                value={extraDraft.qty} onChange={e => recomputeFromQty(e.target.value)} />
+            ) : (
+              <input style={{ ...styles.obsInput, marginBottom: 6 }} type="number" placeholder="Peso aproximado (g) — opcional, ajuda a sugerir e a contribuir para a base"
+                value={extraDraft.weight_g} onChange={e => updateExtraWeight(e.target.value)} />
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)", gap: 6, marginBottom: 8 }}>
               <input style={styles.nutritionInput} type="number" placeholder="kcal" value={extraDraft.kcal} onChange={e => setExtraDraft(d => ({ ...d, kcal: e.target.value }))} />
               <input style={styles.nutritionInput} type="number" step="0.1" placeholder="Proteína (g)" value={extraDraft.protein} onChange={e => setExtraDraft(d => ({ ...d, protein: e.target.value }))} />
